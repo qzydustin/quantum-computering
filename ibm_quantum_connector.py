@@ -4,7 +4,7 @@ from qiskit_ibm_runtime import QiskitRuntimeService
 class QuantumServiceManager:
     """IBM Quantum Service Manager"""
     
-    def __init__(self, config_file="config/quantum_config.json"):
+    def __init__(self, config_file="quantum_config.json"):
         """
         Initialize quantum service manager
         
