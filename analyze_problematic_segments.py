@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Analyze continuous operation sequences in problematic segments across multiple delta debug reports.
-Identifies which continuous operation sequences frequently appear in problematic segments.
+Analyze continuous operation sequences in problematic segments.
 """
 
 import json
 import sys
 import glob
-from collections import Counter, defaultdict
+import os
+from collections import defaultdict
 from typing import List, Tuple
 
 def load_report(filepath: str) -> dict:
@@ -15,19 +15,18 @@ def load_report(filepath: str) -> dict:
     with open(filepath, 'r') as f:
         return json.load(f)
 
-def extract_operations(segment: dict) -> List[Tuple[str, Tuple[int], Tuple]]:
-    """Extract operations from segment: (operation, qubits, params)"""
+def extract_operations(segment: dict) -> List[Tuple[str, Tuple[int]]]:
+    """Extract operations from segment: (operation, qubits)"""
     operations = []
     for op in segment.get('operations', []):
         op_name = op['operation']
         qubits = tuple(sorted(op['qubits']))
-        params = tuple(op.get('params', []))
-        operations.append((op_name, qubits, params))
+        operations.append((op_name, qubits))
     return operations
 
-def format_op_qubit(op: Tuple[str, Tuple[int], Tuple]) -> str:
-    """Format operation with qubits: 'rz(143)' or 'cz(136,143)'"""
-    op_name, qubits, params = op
+def format_op(op: Tuple[str, Tuple[int]]) -> str:
+    """Format operation: 'rz(143)' or 'cz(136,143)'"""
+    op_name, qubits = op
     qubits_str = ','.join(map(str, qubits))
     return f"{op_name}({qubits_str})"
 
@@ -39,16 +38,15 @@ def extract_sequences(operations: List[Tuple], min_len: int = 2, max_len: int = 
     for length in range(min_len, min(max_len + 1, n + 1)):
         for i in range(n - length + 1):
             seq = operations[i:i+length]
-            op_seq = tuple([format_op_qubit(op) for op in seq])
-            full_seq = tuple(seq)
-            sequences.append((op_seq, full_seq))
+            op_seq = tuple([format_op(op) for op in seq])
+            sequences.append(op_seq)
     
     return sequences
 
 def analyze_sequences(reports: List[dict]) -> dict:
     """Analyze continuous operations in problematic segments"""
     
-    all_seqs = defaultdict(lambda: {'count': 0, 'reports': [], 'segments': []})
+    all_seqs = defaultdict(lambda: {'count': 0, 'reports': set(), 'segments': []})
     
     for report_idx, report in enumerate(reports):
         prob_segs = report.get('problematic_segments', [])
@@ -59,36 +57,31 @@ def analyze_sequences(reports: List[dict]) -> dict:
                 ops = extract_operations(segments_info[seg_id])
                 sequences = extract_sequences(ops, min_len=2, max_len=4)
                 
-                for op_seq, full_seq in sequences:
+                for op_seq in sequences:
                     all_seqs[op_seq]['count'] += 1
-                    if report_idx not in all_seqs[op_seq]['reports']:
-                        all_seqs[op_seq]['reports'].append(report_idx)
-                    all_seqs[op_seq]['segments'].append({
-                        'report': report_idx,
-                        'segment_id': seg_id,
-                        'full_sequence': full_seq
-                    })
+                    all_seqs[op_seq]['reports'].add(report_idx)
+                    all_seqs[op_seq]['segments'].append({'report': report_idx, 'segment': seg_id})
     
     num_reports = len(reports)
     common_seqs = {}
     frequent_seqs = {}
     
     for seq_key, data in all_seqs.items():
-        if len(data['reports']) == num_reports:
-            common_seqs[seq_key] = data
-        if data['count'] >= 3 or len(data['reports']) >= 2:
-            frequent_seqs[seq_key] = data
+        reports_list = sorted(list(data['reports']))
+        if len(reports_list) == num_reports:
+            common_seqs[seq_key] = {'count': data['count'], 'reports': reports_list}
+        if data['count'] >= 3 or len(reports_list) >= 2:
+            frequent_seqs[seq_key] = {'count': data['count'], 'reports': reports_list}
     
     common_seqs = dict(sorted(common_seqs.items(), key=lambda x: x[1]['count'], reverse=True))
     frequent_seqs = dict(sorted(frequent_seqs.items(), key=lambda x: (x[1]['count'], len(x[1]['reports'])), reverse=True))
     
-    def format_key(seq_key):
-        return ' → '.join(seq_key) if isinstance(seq_key, tuple) else str(seq_key)
+    format_seq = lambda k: ' → '.join(k) if isinstance(k, tuple) else str(k)
     
     return {
         'num_reports': num_reports,
-        'common_sequences': {format_key(k): v for k, v in common_seqs.items()},
-        'frequent_sequences': {format_key(k): v for k, v in frequent_seqs.items()},
+        'common_sequences': {format_seq(k): v for k, v in common_seqs.items()},
+        'frequent_sequences': {format_seq(k): v for k, v in frequent_seqs.items()},
         'summary': {
             'total_unique_sequences': len(all_seqs),
             'sequences_in_all_reports': len(common_seqs),
@@ -96,103 +89,81 @@ def analyze_sequences(reports: List[dict]) -> dict:
         }
     }
 
-def print_analysis(analysis: dict, report_files: List[str]):
+def print_analysis(analysis: dict):
     """Print analysis results"""
     print("=" * 80)
-    print("Continuous Operation Sequences Analysis - Problematic Segments")
+    print("Sequence Analysis Summary")
     print("=" * 80)
     
-    print(f"\nReports: {analysis['num_reports']}")
-    for i, fname in enumerate(report_files):
-        print(f"  [{i}] {fname}")
-    
-    print(f"\nSummary:")
-    print(f"  Total unique sequences: {analysis['summary']['total_unique_sequences']}")
-    print(f"  Sequences in all reports: {analysis['summary']['sequences_in_all_reports']}")
-    print(f"  Frequent sequences: {analysis['summary']['frequent_sequences']}")
+    summary = analysis['summary']
+    print(f"\n📊 Reports analyzed: {analysis['num_reports']}")
+    print(f"📊 Total unique sequences: {summary['total_unique_sequences']}")
+    print(f"📊 Common sequences (all reports): {summary['sequences_in_all_reports']}")
+    print(f"📊 Frequent sequences: {summary['frequent_sequences']}")
     
     # Common sequences
-    print(f"\n" + "=" * 80)
-    print("Common Sequences (in all reports)")
-    print("=" * 80)
-    
     if analysis['common_sequences']:
-        for seq, data in list(analysis['common_sequences'].items())[:20]:
-            print(f"\n{seq}")
-            print(f"  Count: {data['count']} (in {len(data['reports'])} reports)")
-            seg_display = ', '.join([f"report {s['report']} segment {s['segment_id']}" for s in data['segments'][:5]])
-            print(f"  Segments: {seg_display}")
-            if len(data['segments']) > 5:
-                print(f"    ... {len(data['segments']) - 5} more")
-    else:
-        print("\nNo common sequences found")
+        print(f"\n{'='*80}")
+        print("🔴 Common Sequences (appear in ALL reports)")
+        print('='*80)
+        for seq, data in list(analysis['common_sequences'].items())[:10]:
+            print(f"  {seq}")
+            print(f"    Count: {data['count']}, Reports: {data['reports']}")
     
     # Frequent sequences
-    print(f"\n" + "=" * 80)
-    print("Frequent Sequences (≥3 occurrences or ≥2 reports)")
-    print("=" * 80)
-    
     if analysis['frequent_sequences']:
-        for seq, data in list(analysis['frequent_sequences'].items())[:30]:
-            print(f"\n{seq}")
-            print(f"  Count: {data['count']}, Reports: {data['reports']}")
-            seg_display = ', '.join([f"report {s['report']} segment {s['segment_id']}" for s in data['segments'][:3]])
-            print(f"  Segments: {seg_display}")
-            if len(data['segments']) > 3:
-                print(f"    ... {len(data['segments']) - 3} more")
-    else:
-        print("\nNo frequent sequences found")
-
-def convert_for_json(obj):
-    """Convert object for JSON serialization"""
-    if isinstance(obj, dict):
-        return {str(k) if isinstance(k, tuple) else k: convert_for_json(v) for k, v in obj.items()}
-    elif isinstance(obj, (list, tuple)):
-        return [convert_for_json(item) for item in obj]
-    elif isinstance(obj, (set, frozenset)):
-        return [convert_for_json(item) for item in obj]
-    return obj
+        print(f"\n{'='*80}")
+        print("⚠️  Frequent Sequences (≥3 occurrences or ≥2 reports)")
+        print('='*80)
+        for seq, data in list(analysis['frequent_sequences'].items())[:15]:
+            print(f"  {seq}")
+            print(f"    Count: {data['count']}, Reports: {data['reports']}")
 
 def main():
-    if len(sys.argv) > 1:
-        report_files = sys.argv[1:]
-    else:
-        report_files = sorted(glob.glob("delta_debug_report_*.json"))
-        if not report_files:
-            print("Error: No delta_debug_report_*.json files found")
-            print("Usage: python analyze_problematic_segments.py [report1.json] [report2.json] ...")
-            sys.exit(1)
+    data_dir = "delta_debug_data"
+    output_dir = "tmp"
     
-    print(f"Found {len(report_files)} report file(s)")
+    # Find report files
+    if not os.path.exists(data_dir):
+        print(f"❌ Directory '{data_dir}/' not found")
+        sys.exit(1)
     
+    report_files = sorted(glob.glob(os.path.join(data_dir, "delta_debug_report_*.json")))
+    if not report_files:
+        print(f"❌ No delta_debug_report_*.json files found in '{data_dir}/'")
+        sys.exit(1)
+    
+    # Load reports
+    print(f"Loading {len(report_files)} report(s) from {data_dir}/...")
     reports = []
     for fpath in report_files:
         try:
             reports.append(load_report(fpath))
-            print(f"  ✓ {fpath}")
         except Exception as e:
-            print(f"  ✗ {fpath}: {e}")
+            print(f"  ⚠️  Skipped {fpath}: {e}")
     
     if not reports:
-        print("Error: No reports loaded")
+        print("❌ No reports loaded successfully")
         sys.exit(1)
     
-    print(f"\nAnalyzing {len(reports)} report(s)...")
+    print(f"✓ Loaded {len(reports)} reports\n")
+    
+    # Analyze
     analysis = analyze_sequences(reports)
+    print_analysis(analysis)
     
-    print_analysis(analysis, report_files)
+    # Save to tmp directory
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, "sequence_analysis.json")
     
-    # Save key sequences
-    output = {
-        'summary': analysis['summary'],
-        'common_sequences': analysis['common_sequences'],
-        'frequent_sequences': analysis['frequent_sequences']
-    }
-    
-    output_path = "key_continuous_sequences.json"
     with open(output_path, 'w') as f:
-        json.dump(convert_for_json(output), f, indent=2, default=str)
-    print(f"\nSaved to: {output_path}")
+        json.dump({
+            'summary': analysis['summary'],
+            'common_sequences': analysis['common_sequences'],
+            'frequent_sequences': analysis['frequent_sequences']
+        }, f, indent=2)
+    
+    print(f"\n✅ Analysis saved to: {output_path}")
 
 if __name__ == "__main__":
     main()
