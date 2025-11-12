@@ -47,13 +47,17 @@ def _generate_html_content(result: Dict[str, Any]) -> str:
     segments_info = result.get('segments_info', [])
     analysis = result.get('analysis', {})
     
+    # Extract tolerance from meta
+    eval_info = meta.get('evaluation', {})
+    tolerance = eval_info.get('tolerance')
+    
     # Generate sections
     summary_html = _generate_summary(meta, total_segments, problematic_segments, baseline_loss, test_count)
-    timeline_html = _generate_timeline(evaluations, ddmin_log)
+    timeline_html = _generate_timeline(evaluations, ddmin_log, tolerance)
     problematic_segments_html = _generate_problematic_segments_analysis(
         problematic_segments, segments_info, analysis
     )
-    ddmin_process_html = _generate_ddmin_process(ddmin_log)
+    ddmin_process_html = _generate_ddmin_process(ddmin_log, tolerance)
     
     # assemble full HTML
     html = f"""
@@ -487,8 +491,8 @@ def _generate_summary(meta: Dict, total_segments: int, problematic_segments: Lis
                 <span class="metric-value" style="font-size: 1.1em;">{eval_info.get('test_execution_type', 'N/A')}</span>
             </div>
             <div class="metric">
-                <span class="metric-label">Tolerance Base</span>
-                <span class="metric-value" style="font-size: 1.1em;">{eval_info.get('tolerance_base', 'N/A')}</span>
+                <span class="metric-label">Tolerance Threshold</span>
+                <span class="metric-value" style="font-size: 1.1em;">{eval_info.get('tolerance', 'N/A')}</span>
             </div>
             <div class="metric">
                 <span class="metric-label">DDMin Shots</span>
@@ -509,7 +513,7 @@ def _generate_summary(meta: Dict, total_segments: int, problematic_segments: Lis
     return html
 
 
-def _generate_timeline(evaluations: List[Dict], ddmin_log: List[Dict]) -> str:
+def _generate_timeline(evaluations: List[Dict], ddmin_log: List[Dict], tolerance: float = None) -> str:
     """Generate test timeline."""
     
     if not evaluations:
@@ -519,11 +523,10 @@ def _generate_timeline(evaluations: List[Dict], ddmin_log: List[Dict]) -> str:
     
     for i, eval_item in enumerate(evaluations):
         mode = eval_item.get('mode', 'unknown')
-        baseline = eval_item.get('baseline', 0)
-        test = eval_item.get('test', 0)
         loss = eval_item.get('loss', 0)
         excluded = eval_item.get('excluded')
         included = eval_item.get('included')
+        shots = eval_item.get('shots', 'N/A')
         
         # Determine if this step progressed
         is_progressed = False
@@ -540,6 +543,7 @@ def _generate_timeline(evaluations: List[Dict], ddmin_log: List[Dict]) -> str:
         delta_html = ''
         norm_score_html = ''
         complexity_html = ''
+        threshold_comparison_html = ''
         if mode == 'ddmin' and ddmin_log:
             matched_prev = None
             matched_norm_score = None
@@ -557,6 +561,19 @@ def _generate_timeline(evaluations: List[Dict], ddmin_log: List[Dict]) -> str:
             if matched_norm_score is not None:
                 color = '#28a745' if matched_norm_score > 0 else '#6c757d'
                 norm_score_html = f'<span class="delta-badge" style="color: {color};">Score: {matched_norm_score:.5f}</span>'
+                
+                # Add threshold comparison if tolerance is provided
+                if tolerance is not None:
+                    exceeds_threshold = matched_norm_score > tolerance
+                    if exceeds_threshold:
+                        threshold_icon = '✓'
+                        threshold_color = '#28a745'
+                        threshold_text = 'SIGNIFICANT'
+                    else:
+                        threshold_icon = '✗'
+                        threshold_color = '#dc3545'
+                        threshold_text = 'BELOW THRESHOLD'
+                    threshold_comparison_html = f'<span class="delta-badge" style="color: {threshold_color};">{threshold_icon} {matched_norm_score:.5f} vs {tolerance:.5f} → {threshold_text}</span>'
             if matched_complexity is not None:
                 complexity_html = f'<br><small>Complexity: 2Q={matched_complexity.get("two_qubit_gates", 0)}, Total={matched_complexity.get("total_gates", 0)}</small>'
         
@@ -571,6 +588,11 @@ def _generate_timeline(evaluations: List[Dict], ddmin_log: List[Dict]) -> str:
         else:
             details = "Unknown test"
         
+        # Build info line with shots
+        info_line = f'<small>Shots: {shots}</small>'
+        if complexity_html:
+            info_line += complexity_html
+        
         timeline_items.append(f"""
         <div class="{item_class}">
             <div class="timeline-header">
@@ -580,17 +602,22 @@ def _generate_timeline(evaluations: List[Dict], ddmin_log: List[Dict]) -> str:
             </div>
             <div class="timeline-details">
                 {details}<br>
-                <small>Baseline: {baseline:.4f} | Test: {test:.4f}</small>{complexity_html}
+                {info_line}
+                {('<br>' + threshold_comparison_html) if threshold_comparison_html else ''}
             </div>
         </div>
         """)
+    
+    tolerance_info = ''
+    if tolerance is not None:
+        tolerance_info = f' A normalized score above the threshold ({tolerance:.5f}) is considered significant.'
     
     html = f"""
     <div class="section">
         <h2 class="section-title">⏱️ Test Timeline</h2>
         <div class="card">
             <p style="color: #6c757d; margin-bottom: 20px;">
-                Shows each test in chronological order. Green highlight indicates the step narrowed the failure region.
+                Shows each test in chronological order. Green highlight indicates the step narrowed the failure region.{tolerance_info}
             </p>
             <div class="timeline">
                 {''.join(timeline_items)}
@@ -711,7 +738,7 @@ def _generate_problematic_segments_analysis(problematic_segments: List[int],
     return html
 
 
-def _generate_ddmin_process(ddmin_log: List[Dict]) -> str:
+def _generate_ddmin_process(ddmin_log: List[Dict], tolerance: float = None) -> str:
     """Generate DDMin process details."""
     
     if not ddmin_log:
@@ -742,9 +769,23 @@ def _generate_ddmin_process(ddmin_log: List[Dict]) -> str:
         
         # Normalized score
         norm_score_html = ''
+        threshold_comparison_html = ''
         if normalized_score is not None:
             ncolor = '#28a745' if normalized_score > 0 else '#6c757d'
             norm_score_html = f'<span class="delta-badge" style="color: {ncolor};">Score: {normalized_score:.5f}</span>'
+            
+            # Add threshold comparison if tolerance is provided
+            if tolerance is not None:
+                exceeds_threshold = normalized_score > tolerance
+                if exceeds_threshold:
+                    threshold_icon = '✓'
+                    threshold_color = '#28a745'
+                    threshold_text = 'SIGNIFICANT'
+                else:
+                    threshold_icon = '✗'
+                    threshold_color = '#dc3545'
+                    threshold_text = 'BELOW THRESHOLD'
+                threshold_comparison_html = f'<br><small style="color: {threshold_color}; font-weight: bold;">{threshold_icon} Threshold Check: {normalized_score:.5f} vs {tolerance:.5f} → {threshold_text}</small>'
         
         # Complexity info
         complexity_html = ''
@@ -760,17 +801,22 @@ def _generate_ddmin_process(ddmin_log: List[Dict]) -> str:
             <div class="timeline-details">
                 Excluded segments: {excluded[:8]}{'...' if len(excluded) > 8 else ''} (total {len(excluded)})<br>
                 <small>Previous loss: {prev_loss:.4f} → Current loss: {loss:.4f}</small>{complexity_html}
+                {threshold_comparison_html}
                 {' <strong style="color: #28a745;">(narrowed)</strong>' if progressed else ''}
             </div>
         </div>
         """)
+    
+    tolerance_explanation = ''
+    if tolerance is not None:
+        tolerance_explanation = f' The algorithm considers a change significant when the normalized score (loss reduction per complexity unit) exceeds the threshold of {tolerance:.5f}.'
     
     html = f"""
     <div class="section">
         <h2 class="section-title">🔄 DDMin Iterations</h2>
         <div class="card">
             <p style="color: #6c757d; margin-bottom: 20px;">
-                DDMin uses a divide-and-conquer strategy to progressively narrow the problematic segments. For each subset or complement test, if the loss drops, the candidate set is updated.
+                DDMin uses a divide-and-conquer strategy to progressively narrow the problematic segments. For each subset or complement test, if the loss drops, the candidate set is updated.{tolerance_explanation}
             </p>
             <div class="timeline">
                 {''.join(steps_html)}
