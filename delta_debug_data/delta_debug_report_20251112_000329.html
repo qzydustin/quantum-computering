@@ -1,0 +1,1979 @@
+
+<!DOCTYPE html>
+    <html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delta Debug Visual Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 50px;
+        }
+        
+        .section-title {
+            font-size: 1.8em;
+            color: #667eea;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .card-title {
+            font-size: 1.3em;
+            color: #495057;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .metric {
+            display: inline-block;
+            margin-right: 30px;
+            margin-bottom: 15px;
+        }
+        
+        .metric-label {
+            font-size: 0.9em;
+            color: #6c757d;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .metric-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(to bottom, #667eea, #764ba2);
+        }
+        
+        .timeline-item {
+            position: relative;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -32px;
+            top: 20px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #667eea;
+            border: 3px solid white;
+            box-shadow: 0 0 0 3px #667eea;
+        }
+        
+        .timeline-item.baseline {
+            border-left-color: #28a745;
+        }
+        
+        .timeline-item.baseline::before {
+            background: #28a745;
+            box-shadow: 0 0 0 3px #28a745;
+        }
+        
+        .timeline-item.ddmin {
+            border-left-color: #007bff;
+        }
+        
+        .timeline-item.ddmin::before {
+            background: #007bff;
+            box-shadow: 0 0 0 3px #007bff;
+        }
+        
+        
+        
+        .timeline-item.progressed {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+        
+        .timeline-item.progressed::before {
+            background: #28a745;
+            box-shadow: 0 0 0 3px #28a745;
+        }
+        
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .timeline-mode {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .mode-baseline {
+            background: #28a745;
+            color: white;
+        }
+        
+        .mode-ddmin {
+            background: #007bff;
+            color: white;
+        }
+        
+        
+        
+        .timeline-loss {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #dc3545;
+        }
+        
+        .delta-badge {
+            font-size: 1.0em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .timeline-details {
+            color: #6c757d;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+        
+        .segment-box {
+            background: white;
+            border: 2px solid #dc3545;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .segment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f8f9fa;
+        }
+        
+        .segment-id {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #dc3545;
+        }
+        
+        .segment-desc {
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        .operation-list {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        
+        .operation-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            border-left: 3px solid #667eea;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+        
+        .stat-card.highlight {
+            border-color: #dc3545;
+            background: #fff5f5;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin: 2px;
+        }
+        
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .progress-badge {
+            background: #28a745;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.75em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                border-radius: 0;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .metric {
+                display: block;
+                margin-right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Delta Debug Visual Report</h1>
+            <p>Quantum circuit fault localization and analysis</p>
+        </div>
+        
+        <div class="content">
+            
+    <div class="section">
+        <h2 class="section-title">📊 Summary</h2>
+        <div class="card">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="metric-label">Total Segments</span>
+                    <div class="metric-value">38</div>
+                </div>
+                <div class="stat-card highlight">
+                    <span class="metric-label">Problematic Segments</span>
+                    <div class="metric-value">1</div>
+                </div>
+                <div class="stat-card">
+                    <span class="metric-label">Baseline Loss</span>
+                    <div class="metric-value">0.4385</div>
+                </div>
+                <div class="stat-card">
+                    <span class="metric-label">Test Count</span>
+                    <div class="metric-value">58</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">🔧 Configuration</div>
+            <div class="metric">
+                <span class="metric-label">Logical Qubits</span>
+                <span class="metric-value" style="font-size: 1.3em;">N/A</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Test Mode</span>
+                <span class="metric-value" style="font-size: 1.1em;">False</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Baseline Exec</span>
+                <span class="metric-value" style="font-size: 1.1em;">noisy_simulator</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Test Exec</span>
+                <span class="metric-value" style="font-size: 1.1em;">real_device</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Tolerance Threshold</span>
+                <span class="metric-value" style="font-size: 1.1em;">0.01</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">DDMin Shots</span>
+                <span class="metric-value" style="font-size: 1.1em;">2048</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Max Granularity</span>
+                <span class="metric-value" style="font-size: 1.1em;">16</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Normalization Metric</span>
+                <span class="metric-value" style="font-size: 1.1em;">two_qubit_gates (fallback to total_gates if no two-qubit gates)</span>
+            </div>
+        </div>
+    </div>
+    
+            
+    <div class="section">
+        <h2 class="section-title">⏱️ Test Timeline</h2>
+        <div class="card">
+            <p style="color: #6c757d; margin-bottom: 20px;">
+                Shows each test in chronological order. Green highlight indicates the step narrowed the failure region. A normalized score above the threshold (0.01000) is considered significant.
+            </p>
+            <div class="timeline">
+                
+        <div class="timeline-item baseline">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-baseline">#1 BASELINE</span>
+                <span class="timeline-loss">Loss: 0.4385</span>
+                
+            </div>
+            <div class="timeline-details">
+                Test full circuit (all 38 segments)<br>
+                <small>Shots: 2048</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin progressed">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#2 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1367</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.3018</span><span class="delta-badge" style="color: #28a745;">Score: 0.02321</span>
+                <span class="progress-badge">✓ Progress</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 19)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=13, Total=70</small>
+                <br><span class="delta-badge" style="color: #28a745;">✓ 0.02321 vs 0.01000 → SIGNIFICANT</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#3 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1367</span><span class="delta-badge" style="color: #6c757d;">ΔLoss: +0.0000</span><span class="delta-badge" style="color: #6c757d;">Score: 0.00000</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 10)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=7, Total=41</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00000 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#4 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1396</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0029</span><span class="delta-badge" style="color: #6c757d;">Score: -0.00049</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [10, 11, 12, 13, 14]... (total 9)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=6, Total=29</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.00049 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#5 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1289</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0078</span><span class="delta-badge" style="color: #6c757d;">Score: -0.00049</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [10, 11, 12, 13, 14]... (total 9)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=6, Total=29</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.00049 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#6 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1289</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0078</span><span class="delta-badge" style="color: #6c757d;">Score: 0.00000</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 10)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=7, Total=41</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00000 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#7 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1328</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0039</span><span class="delta-badge" style="color: #28a745;">Score: 0.00195</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4] (total 5)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=2, Total=21</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00195 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#8 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1250</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0117</span><span class="delta-badge" style="color: #28a745;">Score: 0.00107</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [5, 6, 7, 8, 9]... (total 14)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=11, Total=49</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00107 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#9 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.2803</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.1436</span><span class="delta-badge" style="color: #6c757d;">Score: -0.02871</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [5, 6, 7, 8, 9] (total 5)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=5, Total=20</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.02871 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#10 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.0957</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0410</span><span class="delta-badge" style="color: #28a745;">Score: 0.00513</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 14)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=8, Total=50</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00513 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#11 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.2412</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.1045</span><span class="delta-badge" style="color: #6c757d;">Score: -0.03483</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [10, 11, 12, 13, 14] (total 5)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=3, Total=15</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.03483 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#12 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.0762</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0605</span><span class="delta-badge" style="color: #28a745;">Score: 0.00605</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 14)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=10, Total=55</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00605 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#13 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1729</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0361</span><span class="delta-badge" style="color: #6c757d;">Score: -0.01204</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [15, 16, 17, 18] (total 4)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=3, Total=14</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.01204 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#14 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1592</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0225</span><span class="delta-badge" style="color: #6c757d;">Score: -0.00225</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 15)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=10, Total=56</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.00225 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#15 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1240</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0127</span><span class="delta-badge" style="color: #28a745;">Score: 0.00085</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2] (total 3)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=0, Total=15</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00085 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#16 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1396</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0029</span><span class="delta-badge" style="color: #6c757d;">Score: -0.00023</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [3, 4, 5, 6, 7]... (total 16)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=13, Total=55</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.00023 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#17 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1719</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0352</span><span class="delta-badge" style="color: #6c757d;">Score: -0.01172</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [3, 4, 5] (total 3)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=3, Total=10</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.01172 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#18 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.0625</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0742</span><span class="delta-badge" style="color: #28a745;">Score: 0.00742</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 6, 7]... (total 16)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=10, Total=60</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00742 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#19 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1982</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0615</span><span class="delta-badge" style="color: #6c757d;">Score: -0.02051</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [6, 7, 8] (total 3)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=3, Total=12</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.02051 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#20 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.0723</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0645</span><span class="delta-badge" style="color: #28a745;">Score: 0.00645</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 16)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=10, Total=58</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00645 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#21 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1377</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0010</span><span class="delta-badge" style="color: #6c757d;">Score: -0.00098</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [9, 10] (total 2)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=1, Total=9</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.00098 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#22 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1162</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0205</span><span class="delta-badge" style="color: #28a745;">Score: 0.00171</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 17)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=12, Total=61</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00171 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#23 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1543</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0176</span><span class="delta-badge" style="color: #6c757d;">Score: -0.01758</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [11, 12] (total 2)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=1, Total=7</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.01758 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#24 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.0928</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0439</span><span class="delta-badge" style="color: #28a745;">Score: 0.00366</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 17)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=12, Total=63</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00366 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#25 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.2275</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0908</span><span class="delta-badge" style="color: #6c757d;">Score: -0.04541</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [13, 14] (total 2)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=2, Total=3</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.04541 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#26 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1035</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0332</span><span class="delta-badge" style="color: #28a745;">Score: 0.00302</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 17)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=11, Total=67</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00302 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#27 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1748</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0381</span><span class="delta-badge" style="color: #6c757d;">Score: -0.03809</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [15, 16] (total 2)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=1, Total=6</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.03809 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#28 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1035</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0332</span><span class="delta-badge" style="color: #28a745;">Score: 0.00277</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 17)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=12, Total=64</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00277 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#29 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.2695</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.1328</span><span class="delta-badge" style="color: #6c757d;">Score: -0.06641</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [17, 18] (total 2)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=2, Total=8</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.06641 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#30 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.0840</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0527</span><span class="delta-badge" style="color: #28a745;">Score: 0.00479</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 17)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=11, Total=62</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00479 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#31 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1064</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0303</span><span class="delta-badge" style="color: #28a745;">Score: 0.00303</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1] (total 2)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=0, Total=10</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00303 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#32 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1025</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0342</span><span class="delta-badge" style="color: #28a745;">Score: 0.00263</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [2, 3, 4, 5, 6]... (total 17)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=13, Total=60</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00263 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#33 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1494</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0127</span><span class="delta-badge" style="color: #6c757d;">Score: -0.01270</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [2, 3] (total 2)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=1, Total=7</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.01270 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#34 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1328</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0039</span><span class="delta-badge" style="color: #28a745;">Score: 0.00033</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 4, 5, 6]... (total 17)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=12, Total=63</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00033 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#35 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.3086</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.1719</span><span class="delta-badge" style="color: #6c757d;">Score: -0.08594</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [4, 5] (total 2)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=2, Total=8</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.08594 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#36 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1172</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0195</span><span class="delta-badge" style="color: #28a745;">Score: 0.00178</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 6]... (total 17)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=11, Total=62</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00178 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#37 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.2979</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.1611</span><span class="delta-badge" style="color: #6c757d;">Score: -0.16113</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [6] (total 1)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=1, Total=4</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.16113 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#38 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.0830</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0537</span><span class="delta-badge" style="color: #28a745;">Score: 0.00448</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 18)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=12, Total=66</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00448 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#39 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1729</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0361</span><span class="delta-badge" style="color: #6c757d;">Score: -0.03613</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [7] (total 1)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=1, Total=4</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.03613 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#40 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.0850</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0518</span><span class="delta-badge" style="color: #28a745;">Score: 0.00431</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 18)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=12, Total=66</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00431 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#41 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.4043</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.2676</span><span class="delta-badge" style="color: #6c757d;">Score: -0.26758</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [8] (total 1)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=1, Total=4</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.26758 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#42 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.0635</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0732</span><span class="delta-badge" style="color: #28a745;">Score: 0.00610</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 18)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=12, Total=66</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00610 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#43 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.3613</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.2246</span><span class="delta-badge" style="color: #6c757d;">Score: -0.22461</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [9] (total 1)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=1, Total=4</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.22461 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#44 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1064</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0303</span><span class="delta-badge" style="color: #28a745;">Score: 0.00252</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 18)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=12, Total=66</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00252 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#45 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1436</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0068</span><span class="delta-badge" style="color: #6c757d;">Score: -0.00137</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [10] (total 1)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=0, Total=5</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.00137 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#46 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.0801</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0566</span><span class="delta-badge" style="color: #28a745;">Score: 0.00436</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 18)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=13, Total=65</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00436 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#47 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.4902</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.3535</span><span class="delta-badge" style="color: #6c757d;">Score: -0.35352</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [11] (total 1)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=1, Total=2</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.35352 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#48 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.0898</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0469</span><span class="delta-badge" style="color: #28a745;">Score: 0.00391</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 18)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=12, Total=68</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00391 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#49 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1895</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0527</span><span class="delta-badge" style="color: #6c757d;">Score: -0.01055</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [12] (total 1)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=0, Total=5</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.01055 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#50 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1309</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0059</span><span class="delta-badge" style="color: #28a745;">Score: 0.00045</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 18)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=13, Total=65</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00045 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#51 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1689</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0322</span><span class="delta-badge" style="color: #6c757d;">Score: -0.03223</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [13] (total 1)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=1, Total=1</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.03223 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#52 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1211</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0156</span><span class="delta-badge" style="color: #28a745;">Score: 0.00130</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 18)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=12, Total=69</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00130 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#53 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.2041</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0674</span><span class="delta-badge" style="color: #6c757d;">Score: -0.06738</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [14] (total 1)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=1, Total=2</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.06738 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#54 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1318</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0049</span><span class="delta-badge" style="color: #28a745;">Score: 0.00041</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 18)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=12, Total=68</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ 0.00041 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#55 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1602</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0234</span><span class="delta-badge" style="color: #6c757d;">Score: -0.00469</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [15] (total 1)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=0, Total=5</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.00469 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#56 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1934</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0566</span><span class="delta-badge" style="color: #6c757d;">Score: -0.00436</span>
+                
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4]... (total 18)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=13, Total=65</small>
+                <br><span class="delta-badge" style="color: #dc3545;">✗ -0.00436 vs 0.01000 → BELOW THRESHOLD</span>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin progressed">
+            <div class="timeline-header">
+                <span class="timeline-mode mode-ddmin">#57 DDMIN</span>
+                <span class="timeline-loss">Loss: 0.1152</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0215</span><span class="delta-badge" style="color: #28a745;">Score: 0.02148</span>
+                <span class="progress-badge">✓ Progress</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [16] (total 1)<br>
+                <small>Shots: 2048</small><br><small>Complexity: 2Q=1, Total=1</small>
+                <br><span class="delta-badge" style="color: #28a745;">✓ 0.02148 vs 0.01000 → SIGNIFICANT</span>
+            </div>
+        </div>
+        
+            </div>
+        </div>
+    </div>
+    
+            
+    <div class="section">
+        <h2 class="section-title">🔴 Problematic Segment Details</h2>
+        
+        <div class="card">
+            <div class="card-title">📌 Quick Stats</div>
+            <div class="metric">
+                <span class="metric-label">Operations Involved</span>
+                <div style="margin-top: 10px;"><span class="badge badge-danger">cz: 1×</span></div>
+            </div>
+            <div class="metric" style="margin-top: 20px;">
+                <span class="metric-label">Qubits Involved</span>
+                <div style="margin-top: 10px;"><span class="badge badge-info">Q143</span> <span class="badge badge-info">Q144</span></div>
+            </div>
+            
+            <div class="metric" style="margin-top: 20px;">
+                <span class="metric-label">Complexity Metrics</span>
+                <div style="margin-top: 10px;">
+                    <span class="badge badge-warning">Total Gates: 1</span>
+                    <span class="badge badge-warning">Two-Qubit Gates: 1</span>
+                    <span class="badge badge-warning">Single-Qubit Gates: 0</span>
+                </div>
+            </div>
+        
+        </div>
+        
+        <div class="card">
+            <div class="card-title">🔍 Segment Details</div>
+            
+            <div class="segment-box">
+                <div class="segment-header">
+                    <span class="segment-id">Layer 16</span>
+                    <span class="segment-desc">1×cz</span>
+                </div>
+                <div style="color: #6c757d; margin-bottom: 10px;">
+                    Contains 1 operations
+                </div>
+                <div class="operation-list">
+                    
+                <div class="operation-item">
+                    <strong>cz</strong> → qubits[144, 143]
+                </div>
+                
+                </div>
+            </div>
+            
+        </div>
+    </div>
+    
+            
+    <div class="section">
+        <h2 class="section-title">🔄 DDMin Iterations</h2>
+        <div class="card">
+            <p style="color: #6c757d; margin-bottom: 20px;">
+                DDMin uses a divide-and-conquer strategy to progressively narrow the problematic segments. For each subset or complement test, if the loss drops, the candidate set is updated. The algorithm considers a change significant when the normalized score (loss reduction per complexity unit) exceeds the threshold of 0.01000.
+            </p>
+            <div class="timeline">
+                
+        <div class="timeline-item ddmin progressed">
+            <div class="timeline-header">
+                <span>✓ Step 1: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1367</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.3018</span><span class="delta-badge" style="color: #28a745;">Score: 0.02321</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 19)<br>
+                <small>Previous loss: 0.4385 → Current loss: 0.1367</small><br><small>Complexity: 2Q=13, Total=70</small>
+                <br><small style="color: #28a745; font-weight: bold;">✓ Threshold Check: 0.02321 vs 0.01000 → SIGNIFICANT</small>
+                 <strong style="color: #28a745;">(narrowed)</strong>
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 2: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1367</span><span class="delta-badge" style="color: #6c757d;">ΔLoss: +0.0000</span><span class="delta-badge" style="color: #6c757d;">Score: 0.00000</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 10)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1367</small><br><small>Complexity: 2Q=7, Total=41</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00000 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 3: Test complement</span>
+                <span class="timeline-loss">Loss: 0.1396</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0029</span><span class="delta-badge" style="color: #6c757d;">Score: -0.00049</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [10, 11, 12, 13, 14, 15, 16, 17]... (total 9)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1396</small><br><small>Complexity: 2Q=6, Total=29</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.00049 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 4: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1289</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0078</span><span class="delta-badge" style="color: #28a745;">Score: 0.00130</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [10, 11, 12, 13, 14, 15, 16, 17]... (total 9)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1289</small><br><small>Complexity: 2Q=6, Total=29</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00130 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 5: Test complement</span>
+                <span class="timeline-loss">Loss: 0.1289</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0078</span><span class="delta-badge" style="color: #28a745;">Score: 0.00112</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 10)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1289</small><br><small>Complexity: 2Q=7, Total=41</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00112 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 6: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1328</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0039</span><span class="delta-badge" style="color: #28a745;">Score: 0.00195</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4] (total 5)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1328</small><br><small>Complexity: 2Q=2, Total=21</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00195 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 7: Test complement</span>
+                <span class="timeline-loss">Loss: 0.1250</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0117</span><span class="delta-badge" style="color: #28a745;">Score: 0.00107</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [5, 6, 7, 8, 9, 10, 11, 12]... (total 14)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1250</small><br><small>Complexity: 2Q=11, Total=49</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00107 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 8: Test subset</span>
+                <span class="timeline-loss">Loss: 0.2803</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.1436</span><span class="delta-badge" style="color: #6c757d;">Score: -0.02871</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [5, 6, 7, 8, 9] (total 5)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.2803</small><br><small>Complexity: 2Q=5, Total=20</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.02871 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 9: Test complement</span>
+                <span class="timeline-loss">Loss: 0.0957</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0410</span><span class="delta-badge" style="color: #28a745;">Score: 0.00513</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 10, 11, 12]... (total 14)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.0957</small><br><small>Complexity: 2Q=8, Total=50</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00513 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 10: Test subset</span>
+                <span class="timeline-loss">Loss: 0.2412</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.1045</span><span class="delta-badge" style="color: #6c757d;">Score: -0.03483</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [10, 11, 12, 13, 14] (total 5)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.2412</small><br><small>Complexity: 2Q=3, Total=15</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.03483 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 11: Test complement</span>
+                <span class="timeline-loss">Loss: 0.0762</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0605</span><span class="delta-badge" style="color: #28a745;">Score: 0.00605</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 14)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.0762</small><br><small>Complexity: 2Q=10, Total=55</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00605 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 12: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1729</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0361</span><span class="delta-badge" style="color: #6c757d;">Score: -0.01204</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [15, 16, 17, 18] (total 4)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1729</small><br><small>Complexity: 2Q=3, Total=14</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.01204 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 13: Test complement</span>
+                <span class="timeline-loss">Loss: 0.1592</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0225</span><span class="delta-badge" style="color: #6c757d;">Score: -0.00225</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 15)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1592</small><br><small>Complexity: 2Q=10, Total=56</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.00225 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 14: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1240</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0127</span><span class="delta-badge" style="color: #28a745;">Score: 0.00085</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2] (total 3)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1240</small><br><small>Complexity: 2Q=0, Total=15</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00085 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 15: Test complement</span>
+                <span class="timeline-loss">Loss: 0.1396</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0029</span><span class="delta-badge" style="color: #6c757d;">Score: -0.00023</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [3, 4, 5, 6, 7, 8, 9, 10]... (total 16)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1396</small><br><small>Complexity: 2Q=13, Total=55</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.00023 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 16: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1719</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0352</span><span class="delta-badge" style="color: #6c757d;">Score: -0.01172</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [3, 4, 5] (total 3)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1719</small><br><small>Complexity: 2Q=3, Total=10</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.01172 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 17: Test complement</span>
+                <span class="timeline-loss">Loss: 0.0625</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0742</span><span class="delta-badge" style="color: #28a745;">Score: 0.00742</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 6, 7, 8, 9, 10]... (total 16)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.0625</small><br><small>Complexity: 2Q=10, Total=60</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00742 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 18: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1982</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0615</span><span class="delta-badge" style="color: #6c757d;">Score: -0.02051</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [6, 7, 8] (total 3)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1982</small><br><small>Complexity: 2Q=3, Total=12</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.02051 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 19: Test complement</span>
+                <span class="timeline-loss">Loss: 0.0723</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0645</span><span class="delta-badge" style="color: #28a745;">Score: 0.00645</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 9, 10]... (total 16)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.0723</small><br><small>Complexity: 2Q=10, Total=58</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00645 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 20: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1377</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0010</span><span class="delta-badge" style="color: #6c757d;">Score: -0.00098</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [9, 10] (total 2)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1377</small><br><small>Complexity: 2Q=1, Total=9</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.00098 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 21: Test complement</span>
+                <span class="timeline-loss">Loss: 0.1162</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0205</span><span class="delta-badge" style="color: #28a745;">Score: 0.00171</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 17)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1162</small><br><small>Complexity: 2Q=12, Total=61</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00171 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 22: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1543</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0176</span><span class="delta-badge" style="color: #6c757d;">Score: -0.01758</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [11, 12] (total 2)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1543</small><br><small>Complexity: 2Q=1, Total=7</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.01758 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 23: Test complement</span>
+                <span class="timeline-loss">Loss: 0.0928</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0439</span><span class="delta-badge" style="color: #28a745;">Score: 0.00366</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 17)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.0928</small><br><small>Complexity: 2Q=12, Total=63</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00366 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 24: Test subset</span>
+                <span class="timeline-loss">Loss: 0.2275</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0908</span><span class="delta-badge" style="color: #6c757d;">Score: -0.04541</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [13, 14] (total 2)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.2275</small><br><small>Complexity: 2Q=2, Total=3</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.04541 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 25: Test complement</span>
+                <span class="timeline-loss">Loss: 0.1035</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0332</span><span class="delta-badge" style="color: #28a745;">Score: 0.00302</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 17)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1035</small><br><small>Complexity: 2Q=11, Total=67</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00302 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 26: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1748</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0381</span><span class="delta-badge" style="color: #6c757d;">Score: -0.03809</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [15, 16] (total 2)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1748</small><br><small>Complexity: 2Q=1, Total=6</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.03809 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 27: Test complement</span>
+                <span class="timeline-loss">Loss: 0.1035</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0332</span><span class="delta-badge" style="color: #28a745;">Score: 0.00277</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 17)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1035</small><br><small>Complexity: 2Q=12, Total=64</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00277 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 28: Test subset</span>
+                <span class="timeline-loss">Loss: 0.2695</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.1328</span><span class="delta-badge" style="color: #6c757d;">Score: -0.06641</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [17, 18] (total 2)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.2695</small><br><small>Complexity: 2Q=2, Total=8</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.06641 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 29: Test complement</span>
+                <span class="timeline-loss">Loss: 0.0840</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0527</span><span class="delta-badge" style="color: #28a745;">Score: 0.00479</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 17)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.0840</small><br><small>Complexity: 2Q=11, Total=62</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00479 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 30: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1064</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0303</span><span class="delta-badge" style="color: #28a745;">Score: 0.00303</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1] (total 2)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1064</small><br><small>Complexity: 2Q=0, Total=10</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00303 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 31: Test complement</span>
+                <span class="timeline-loss">Loss: 0.1025</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0342</span><span class="delta-badge" style="color: #28a745;">Score: 0.00263</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [2, 3, 4, 5, 6, 7, 8, 9]... (total 17)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1025</small><br><small>Complexity: 2Q=13, Total=60</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00263 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 32: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1494</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0127</span><span class="delta-badge" style="color: #6c757d;">Score: -0.01270</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [2, 3] (total 2)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1494</small><br><small>Complexity: 2Q=1, Total=7</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.01270 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 33: Test complement</span>
+                <span class="timeline-loss">Loss: 0.1328</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0039</span><span class="delta-badge" style="color: #28a745;">Score: 0.00033</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 4, 5, 6, 7, 8, 9]... (total 17)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1328</small><br><small>Complexity: 2Q=12, Total=63</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00033 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 34: Test subset</span>
+                <span class="timeline-loss">Loss: 0.3086</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.1719</span><span class="delta-badge" style="color: #6c757d;">Score: -0.08594</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [4, 5] (total 2)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.3086</small><br><small>Complexity: 2Q=2, Total=8</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.08594 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 35: Test complement</span>
+                <span class="timeline-loss">Loss: 0.1172</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0195</span><span class="delta-badge" style="color: #28a745;">Score: 0.00178</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 6, 7, 8, 9]... (total 17)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1172</small><br><small>Complexity: 2Q=11, Total=62</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00178 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 36: Test subset</span>
+                <span class="timeline-loss">Loss: 0.2979</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.1611</span><span class="delta-badge" style="color: #6c757d;">Score: -0.16113</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [6] (total 1)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.2979</small><br><small>Complexity: 2Q=1, Total=4</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.16113 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 37: Test complement</span>
+                <span class="timeline-loss">Loss: 0.0830</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0537</span><span class="delta-badge" style="color: #28a745;">Score: 0.00448</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 7, 8]... (total 18)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.0830</small><br><small>Complexity: 2Q=12, Total=66</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00448 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 38: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1729</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0361</span><span class="delta-badge" style="color: #6c757d;">Score: -0.03613</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [7] (total 1)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1729</small><br><small>Complexity: 2Q=1, Total=4</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.03613 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 39: Test complement</span>
+                <span class="timeline-loss">Loss: 0.0850</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0518</span><span class="delta-badge" style="color: #28a745;">Score: 0.00431</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 8]... (total 18)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.0850</small><br><small>Complexity: 2Q=12, Total=66</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00431 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 40: Test subset</span>
+                <span class="timeline-loss">Loss: 0.4043</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.2676</span><span class="delta-badge" style="color: #6c757d;">Score: -0.26758</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [8] (total 1)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.4043</small><br><small>Complexity: 2Q=1, Total=4</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.26758 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 41: Test complement</span>
+                <span class="timeline-loss">Loss: 0.0635</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0732</span><span class="delta-badge" style="color: #28a745;">Score: 0.00610</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 18)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.0635</small><br><small>Complexity: 2Q=12, Total=66</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00610 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 42: Test subset</span>
+                <span class="timeline-loss">Loss: 0.3613</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.2246</span><span class="delta-badge" style="color: #6c757d;">Score: -0.22461</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [9] (total 1)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.3613</small><br><small>Complexity: 2Q=1, Total=4</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.22461 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 43: Test complement</span>
+                <span class="timeline-loss">Loss: 0.1064</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0303</span><span class="delta-badge" style="color: #28a745;">Score: 0.00252</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 18)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1064</small><br><small>Complexity: 2Q=12, Total=66</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00252 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 44: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1436</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0068</span><span class="delta-badge" style="color: #6c757d;">Score: -0.00137</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [10] (total 1)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1436</small><br><small>Complexity: 2Q=0, Total=5</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.00137 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 45: Test complement</span>
+                <span class="timeline-loss">Loss: 0.0801</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0566</span><span class="delta-badge" style="color: #28a745;">Score: 0.00436</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 18)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.0801</small><br><small>Complexity: 2Q=13, Total=65</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00436 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 46: Test subset</span>
+                <span class="timeline-loss">Loss: 0.4902</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.3535</span><span class="delta-badge" style="color: #6c757d;">Score: -0.35352</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [11] (total 1)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.4902</small><br><small>Complexity: 2Q=1, Total=2</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.35352 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 47: Test complement</span>
+                <span class="timeline-loss">Loss: 0.0898</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0469</span><span class="delta-badge" style="color: #28a745;">Score: 0.00391</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 18)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.0898</small><br><small>Complexity: 2Q=12, Total=68</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00391 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 48: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1895</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0527</span><span class="delta-badge" style="color: #6c757d;">Score: -0.01055</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [12] (total 1)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1895</small><br><small>Complexity: 2Q=0, Total=5</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.01055 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 49: Test complement</span>
+                <span class="timeline-loss">Loss: 0.1309</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0059</span><span class="delta-badge" style="color: #28a745;">Score: 0.00045</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 18)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1309</small><br><small>Complexity: 2Q=13, Total=65</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00045 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 50: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1689</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0322</span><span class="delta-badge" style="color: #6c757d;">Score: -0.03223</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [13] (total 1)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1689</small><br><small>Complexity: 2Q=1, Total=1</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.03223 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 51: Test complement</span>
+                <span class="timeline-loss">Loss: 0.1211</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0156</span><span class="delta-badge" style="color: #28a745;">Score: 0.00130</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 18)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1211</small><br><small>Complexity: 2Q=12, Total=69</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00130 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 52: Test subset</span>
+                <span class="timeline-loss">Loss: 0.2041</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0674</span><span class="delta-badge" style="color: #6c757d;">Score: -0.06738</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [14] (total 1)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.2041</small><br><small>Complexity: 2Q=1, Total=2</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.06738 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 53: Test complement</span>
+                <span class="timeline-loss">Loss: 0.1318</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0049</span><span class="delta-badge" style="color: #28a745;">Score: 0.00041</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 18)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1318</small><br><small>Complexity: 2Q=12, Total=68</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: 0.00041 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 54: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1602</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0234</span><span class="delta-badge" style="color: #6c757d;">Score: -0.00469</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [15] (total 1)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1602</small><br><small>Complexity: 2Q=0, Total=5</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.00469 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin ">
+            <div class="timeline-header">
+                <span>○ Step 55: Test complement</span>
+                <span class="timeline-loss">Loss: 0.1934</span><span class="delta-badge" style="color: #dc3545;">ΔLoss: -0.0566</span><span class="delta-badge" style="color: #6c757d;">Score: -0.00436</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [0, 1, 2, 3, 4, 5, 6, 7]... (total 18)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1934</small><br><small>Complexity: 2Q=13, Total=65</small>
+                <br><small style="color: #dc3545; font-weight: bold;">✗ Threshold Check: -0.00436 vs 0.01000 → BELOW THRESHOLD</small>
+                
+            </div>
+        </div>
+        
+        <div class="timeline-item ddmin progressed">
+            <div class="timeline-header">
+                <span>✓ Step 56: Test subset</span>
+                <span class="timeline-loss">Loss: 0.1152</span><span class="delta-badge" style="color: #28a745;">ΔLoss: +0.0215</span><span class="delta-badge" style="color: #28a745;">Score: 0.02148</span>
+            </div>
+            <div class="timeline-details">
+                Excluded segments: [16] (total 1)<br>
+                <small>Previous loss: 0.1367 → Current loss: 0.1152</small><br><small>Complexity: 2Q=1, Total=1</small>
+                <br><small style="color: #28a745; font-weight: bold;">✓ Threshold Check: 0.02148 vs 0.01000 → SIGNIFICANT</small>
+                 <strong style="color: #28a745;">(narrowed)</strong>
+            </div>
+        </div>
+        
+            </div>
+        </div>
+    </div>
+    
+        </div>
+        
+        <div class="footer">
+            <p>Generated by Delta Debug Visualizer • 2025-11-12T00:03:02.317122</p>
+        </div>
+    </div>
+</body>
+</html>
+    
