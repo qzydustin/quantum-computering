@@ -494,6 +494,14 @@ def _generate_summary(meta: Dict, total_segments: int, problematic_segments: Lis
                 <span class="metric-label">DDMin Shots</span>
                 <span class="metric-value" style="font-size: 1.1em;">{eval_info.get('shots_ddmin', 'N/A')}</span>
             </div>
+            <div class="metric">
+                <span class="metric-label">Max Granularity</span>
+                <span class="metric-value" style="font-size: 1.1em;">{eval_info.get('max_granularity', 'N/A')}</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Normalization Metric</span>
+                <span class="metric-value" style="font-size: 1.1em;">{eval_info.get('normalization_metric', 'N/A')}</span>
+            </div>
         </div>
     </div>
     """
@@ -528,18 +536,29 @@ def _generate_timeline(evaluations: List[Dict], ddmin_log: List[Dict]) -> str:
         progress_badge = '<span class="progress-badge">✓ Progress</span>' if is_progressed else ''
         item_class = f"timeline-item {mode}" + (" progressed" if is_progressed else "")
         
-        # Compute delta loss (prev_loss - current loss), if available
+        # Compute delta loss and normalized score, if available
         delta_html = ''
+        norm_score_html = ''
+        complexity_html = ''
         if mode == 'ddmin' and ddmin_log:
             matched_prev = None
+            matched_norm_score = None
+            matched_complexity = None
             for log_entry in ddmin_log:
                 if log_entry.get('excluded') == excluded:
                     matched_prev = log_entry.get('prev_loss')
+                    matched_norm_score = log_entry.get('normalized_score')
+                    matched_complexity = log_entry.get('complexity')
                     break
             if matched_prev is not None:
                 delta = matched_prev - loss
                 color = '#28a745' if delta > 0 else ('#dc3545' if delta < 0 else '#6c757d')
                 delta_html = f'<span class="delta-badge" style="color: {color};">ΔLoss: {delta:+.4f}</span>'
+            if matched_norm_score is not None:
+                color = '#28a745' if matched_norm_score > 0 else '#6c757d'
+                norm_score_html = f'<span class="delta-badge" style="color: {color};">Score: {matched_norm_score:.5f}</span>'
+            if matched_complexity is not None:
+                complexity_html = f'<br><small>Complexity: 2Q={matched_complexity.get("two_qubit_gates", 0)}, Total={matched_complexity.get("total_gates", 0)}</small>'
         
         # Build details
         if mode == 'baseline':
@@ -556,12 +575,12 @@ def _generate_timeline(evaluations: List[Dict], ddmin_log: List[Dict]) -> str:
         <div class="{item_class}">
             <div class="timeline-header">
                 <span class="timeline-mode mode-{mode}">#{i+1} {mode.upper()}</span>
-                <span class="timeline-loss">Loss: {loss:.4f}</span>{delta_html}
+                <span class="timeline-loss">Loss: {loss:.4f}</span>{delta_html}{norm_score_html}
                 {progress_badge}
             </div>
             <div class="timeline-details">
                 {details}<br>
-                <small>Baseline: {baseline:.4f} | Test: {test:.4f}</small>
+                <small>Baseline: {baseline:.4f} | Test: {test:.4f}</small>{complexity_html}
             </div>
         </div>
         """)
@@ -650,6 +669,21 @@ def _generate_problematic_segments_analysis(problematic_segments: List[int],
         for q in affected_qubits
     ])
     
+    # Complexity analysis
+    complexity_analysis = analysis.get('complexity_analysis', {})
+    complexity_html = ''
+    if complexity_analysis:
+        complexity_html = f"""
+            <div class="metric" style="margin-top: 20px;">
+                <span class="metric-label">Complexity Metrics</span>
+                <div style="margin-top: 10px;">
+                    <span class="badge badge-warning">Total Gates: {complexity_analysis.get('total_gates', 0)}</span>
+                    <span class="badge badge-warning">Two-Qubit Gates: {complexity_analysis.get('two_qubit_gates', 0)}</span>
+                    <span class="badge badge-warning">Single-Qubit Gates: {complexity_analysis.get('single_qubit_gates', 0)}</span>
+                </div>
+            </div>
+        """
+    
     html = f"""
     <div class="section">
         <h2 class="section-title">🔴 Problematic Segment Details</h2>
@@ -664,6 +698,7 @@ def _generate_problematic_segments_analysis(problematic_segments: List[int],
                 <span class="metric-label">Qubits Involved</span>
                 <div style="margin-top: 10px;">{qubit_badges}</div>
             </div>
+            {complexity_html}
         </div>
         
         <div class="card">
@@ -689,25 +724,42 @@ def _generate_ddmin_process(ddmin_log: List[Dict]) -> str:
         loss = log_entry.get('loss', 0)
         prev_loss = log_entry.get('prev_loss', 0)
         progressed = log_entry.get('progressed', False)
+        normalized_score = log_entry.get('normalized_score')
+        complexity = log_entry.get('complexity')
+        delta_loss = log_entry.get('delta_loss')
         
         action_name = "Test subset" if action == "test_subset" else "Test complement"
         progress_icon = "✓" if progressed else "○"
         card_class = "progressed" if progressed else ""
         
         # Delta loss
-        delta = (prev_loss if prev_loss is not None else 0) - (loss if loss is not None else 0)
+        if delta_loss is not None:
+            delta = delta_loss
+        else:
+            delta = (prev_loss if prev_loss is not None else 0) - (loss if loss is not None else 0)
         dcolor = '#28a745' if delta > 0 else ('#dc3545' if delta < 0 else '#6c757d')
         delta_html = f'<span class="delta-badge" style="color: {dcolor};">ΔLoss: {delta:+.4f}</span>'
+        
+        # Normalized score
+        norm_score_html = ''
+        if normalized_score is not None:
+            ncolor = '#28a745' if normalized_score > 0 else '#6c757d'
+            norm_score_html = f'<span class="delta-badge" style="color: {ncolor};">Score: {normalized_score:.5f}</span>'
+        
+        # Complexity info
+        complexity_html = ''
+        if complexity:
+            complexity_html = f'<br><small>Complexity: 2Q={complexity.get("two_qubit_gates", 0)}, Total={complexity.get("total_gates", 0)}</small>'
         
         steps_html.append(f"""
         <div class="timeline-item ddmin {card_class}">
             <div class="timeline-header">
                 <span>{progress_icon} Step {i+1}: {action_name}</span>
-                <span class="timeline-loss">Loss: {loss:.4f}</span>{delta_html}
+                <span class="timeline-loss">Loss: {loss:.4f}</span>{delta_html}{norm_score_html}
             </div>
             <div class="timeline-details">
                 Excluded segments: {excluded[:8]}{'...' if len(excluded) > 8 else ''} (total {len(excluded)})<br>
-                <small>Previous loss: {prev_loss:.4f} → Current loss: {loss:.4f}</small>
+                <small>Previous loss: {prev_loss:.4f} → Current loss: {loss:.4f}</small>{complexity_html}
                 {' <strong style="color: #28a745;">(narrowed)</strong>' if progressed else ''}
             </div>
         </div>
