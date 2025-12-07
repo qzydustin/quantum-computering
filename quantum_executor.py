@@ -191,5 +191,15 @@ class QuantumExecutor:
             return self.run_noisy_by_isa(isa_circuit, shots, param_vals)
         elif execution_type == "real_device":
             return self.run_real_by_isa(isa_circuit, shots, param_vals)
+        elif execution_type == "all":
+            ideal = self.run_ideal_by_isa(isa_circuit, shots, param_vals)
+            noisy = self.run_noisy_by_isa(isa_circuit, shots, param_vals)
+            real = self.run_real_by_isa(isa_circuit, shots, param_vals)
+            return {
+                "ideal": ideal,
+                "noisy": noisy,
+                "real": real,
+            }
+
         else:
             return {"success": False, "error": f"Unknown execution_type: {execution_type}"}
