@@ -1,0 +1,67 @@
+{
+  "summary": {
+    "total_unique_sequences": 88,
+    "sequences_in_all_reports": 0,
+    "frequent_sequences": 6
+  },
+  "common_sequences": {},
+  "frequent_sequences": {
+    "sx(143) \u2192 rz(143, -2.7489)": {
+      "count": 8,
+      "reports": [
+        0,
+        1,
+        2,
+        4,
+        5
+      ]
+    },
+    "rz(143, -2.7489) \u2192 sx(143)": {
+      "count": 8,
+      "reports": [
+        0,
+        1,
+        2,
+        4,
+        5
+      ]
+    },
+    "sx(143) \u2192 rz(143, -2.7489) \u2192 sx(143)": {
+      "count": 8,
+      "reports": [
+        0,
+        1,
+        2,
+        4,
+        5
+      ]
+    },
+    "sx(143) \u2192 cz(136,143)": {
+      "count": 8,
+      "reports": [
+        0,
+        1,
+        2,
+        4
+      ]
+    },
+    "rz(143, -2.7489) \u2192 sx(143) \u2192 cz(136,143)": {
+      "count": 5,
+      "reports": [
+        0,
+        1,
+        2,
+        4
+      ]
+    },
+    "sx(143) \u2192 rz(143, -2.7489) \u2192 sx(143) \u2192 cz(136,143)": {
+      "count": 5,
+      "reports": [
+        0,
+        1,
+        2,
+        4
+      ]
+    }
+  }
+}
