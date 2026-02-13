@@ -1,0 +1,36 @@
+{
+  "sequence": "rz(83, 3.1416) \u2192 cz(84,83)",
+  "count": 3,
+  "reports": [
+    0,
+    1,
+    2
+  ],
+  "physical_qubits": [
+    83,
+    84
+  ],
+  "qubit_mapping": {
+    "83": 0,
+    "84": 1
+  },
+  "operations": [
+    {
+      "operation": "rz",
+      "qubits": [
+        83
+      ],
+      "params": [
+        3.141592653589793
+      ]
+    },
+    {
+      "operation": "cz",
+      "qubits": [
+        84,
+        83
+      ],
+      "params": []
+    }
+  ]
+}

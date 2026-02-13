@@ -1,9 +1,10 @@
 {
   "sequence": "rz(107, -2.7489) \u2192 sx(107)",
-  "count": 6,
+  "count": 7,
   "reports": [
     1,
-    2
+    2,
+    5
   ],
   "physical_qubits": [
     107

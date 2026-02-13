@@ -1,0 +1,8 @@
+quantum_config.json
+__pycache__/
+.venv/
+archive/*
+*.bak
+note.txt
+tmp/*
+.DS_Store

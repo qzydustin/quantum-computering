@@ -1,0 +1,567 @@
+[
+  {
+    "file": "seq_001.qpy",
+    "file_path": "tmp/circuits/seq_001.qpy",
+    "num_qubits": 144,
+    "num_instructions": 4,
+    "measured_virtual_qubits": [
+      136,
+      143
+    ],
+    "measured_physical_qubits": [],
+    "physical_qubits": [
+      136,
+      143
+    ],
+    "qubit_mapping": {
+      "v136": "p0",
+      "v143": "p1"
+    },
+    "measure_map": {
+      "v136": "c0",
+      "v143": "c1"
+    },
+    "tvd_loss": 0.05029296875,
+    "noisy_counts": {
+      "00": 4052,
+      "10": 36,
+      "01": 4066,
+      "11": 38
+    },
+    "real_counts": {
+      "00": 4258,
+      "10": 1,
+      "01": 3933
+    },
+    "state_details": {
+      "00": {
+        "noisy_prob": 0.49462890625,
+        "real_prob": 0.519775390625,
+        "abs_diff": 0.025146484375,
+        "noisy_count": 4052,
+        "real_count": 4258
+      },
+      "01": {
+        "noisy_prob": 0.496337890625,
+        "real_prob": 0.4801025390625,
+        "abs_diff": 0.0162353515625,
+        "noisy_count": 4066,
+        "real_count": 3933
+      },
+      "10": {
+        "noisy_prob": 0.00439453125,
+        "real_prob": 0.0001220703125,
+        "abs_diff": 0.0042724609375,
+        "noisy_count": 36,
+        "real_count": 1
+      },
+      "11": {
+        "noisy_prob": 0.004638671875,
+        "real_prob": 0.0,
+        "abs_diff": 0.004638671875,
+        "noisy_count": 38,
+        "real_count": 0
+      }
+    },
+    "job_id": "d51luarht8fs739t6bsg",
+    "backend": "ibm_fez"
+  },
+  {
+    "file": "seq_002.qpy",
+    "file_path": "tmp/circuits/seq_002.qpy",
+    "num_qubits": 144,
+    "num_instructions": 3,
+    "measured_virtual_qubits": [
+      143
+    ],
+    "measured_physical_qubits": [],
+    "physical_qubits": [
+      143
+    ],
+    "qubit_mapping": {
+      "v143": "p0"
+    },
+    "measure_map": {
+      "v143": "c0"
+    },
+    "tvd_loss": 0.00537109375,
+    "noisy_counts": {
+      "0": 4067,
+      "1": 4125
+    },
+    "real_counts": {
+      "0": 4089,
+      "1": 4103
+    },
+    "state_details": {
+      "0": {
+        "noisy_prob": 0.4964599609375,
+        "real_prob": 0.4991455078125,
+        "abs_diff": 0.002685546875,
+        "noisy_count": 4067,
+        "real_count": 4089
+      },
+      "1": {
+        "noisy_prob": 0.5035400390625,
+        "real_prob": 0.5008544921875,
+        "abs_diff": 0.002685546875,
+        "noisy_count": 4125,
+        "real_count": 4103
+      }
+    },
+    "job_id": "d51lucvp3tbc73akltl0",
+    "backend": "ibm_fez"
+  },
+  {
+    "file": "seq_003.qpy",
+    "file_path": "tmp/circuits/seq_003.qpy",
+    "num_qubits": 144,
+    "num_instructions": 3,
+    "measured_virtual_qubits": [
+      143
+    ],
+    "measured_physical_qubits": [],
+    "physical_qubits": [
+      143
+    ],
+    "qubit_mapping": {
+      "v143": "p0"
+    },
+    "measure_map": {
+      "v143": "c0"
+    },
+    "tvd_loss": 0.006103515625,
+    "noisy_counts": {
+      "0": 4042,
+      "1": 4150
+    },
+    "real_counts": {
+      "0": 4017,
+      "1": 4175
+    },
+    "state_details": {
+      "0": {
+        "noisy_prob": 0.493408203125,
+        "real_prob": 0.4903564453125,
+        "abs_diff": 0.0030517578125,
+        "noisy_count": 4042,
+        "real_count": 4017
+      },
+      "1": {
+        "noisy_prob": 0.506591796875,
+        "real_prob": 0.5096435546875,
+        "abs_diff": 0.0030517578125,
+        "noisy_count": 4150,
+        "real_count": 4175
+      }
+    },
+    "job_id": "d51luf7p3tbc73akltng",
+    "backend": "ibm_fez"
+  },
+  {
+    "file": "seq_004.qpy",
+    "file_path": "tmp/circuits/seq_004.qpy",
+    "num_qubits": 144,
+    "num_instructions": 4,
+    "measured_virtual_qubits": [
+      143
+    ],
+    "measured_physical_qubits": [],
+    "physical_qubits": [
+      143
+    ],
+    "qubit_mapping": {
+      "v143": "p0"
+    },
+    "measure_map": {
+      "v143": "c0"
+    },
+    "tvd_loss": 0.052978515625,
+    "noisy_counts": {
+      "0": 7681,
+      "1": 511
+    },
+    "real_counts": {
+      "0": 7898,
+      "1": 294
+    },
+    "state_details": {
+      "0": {
+        "noisy_prob": 0.9376220703125,
+        "real_prob": 0.964111328125,
+        "abs_diff": 0.0264892578125,
+        "noisy_count": 7681,
+        "real_count": 7898
+      },
+      "1": {
+        "noisy_prob": 0.0623779296875,
+        "real_prob": 0.035888671875,
+        "abs_diff": 0.0264892578125,
+        "noisy_count": 511,
+        "real_count": 294
+      }
+    },
+    "job_id": "d51lugvp3tbc73akltq0",
+    "backend": "ibm_fez"
+  },
+  {
+    "file": "seq_005.qpy",
+    "file_path": "tmp/circuits/seq_005.qpy",
+    "num_qubits": 144,
+    "num_instructions": 3,
+    "measured_virtual_qubits": [
+      143
+    ],
+    "measured_physical_qubits": [],
+    "physical_qubits": [
+      143
+    ],
+    "qubit_mapping": {
+      "v143": "p0"
+    },
+    "measure_map": {
+      "v143": "c0"
+    },
+    "tvd_loss": 0.010498046875,
+    "noisy_counts": {
+      "0": 4059,
+      "1": 4133
+    },
+    "real_counts": {
+      "0": 4102,
+      "1": 4090
+    },
+    "state_details": {
+      "0": {
+        "noisy_prob": 0.4954833984375,
+        "real_prob": 0.500732421875,
+        "abs_diff": 0.0052490234375,
+        "noisy_count": 4059,
+        "real_count": 4102
+      },
+      "1": {
+        "noisy_prob": 0.5045166015625,
+        "real_prob": 0.499267578125,
+        "abs_diff": 0.0052490234375,
+        "noisy_count": 4133,
+        "real_count": 4090
+      }
+    },
+    "job_id": "d51luj0nsj9s73av4cv0",
+    "backend": "ibm_fez"
+  },
+  {
+    "file": "seq_006.qpy",
+    "file_path": "tmp/circuits/seq_006.qpy",
+    "num_qubits": 144,
+    "num_instructions": 5,
+    "measured_virtual_qubits": [
+      136,
+      143
+    ],
+    "measured_physical_qubits": [],
+    "physical_qubits": [
+      136,
+      143
+    ],
+    "qubit_mapping": {
+      "v136": "p0",
+      "v143": "p1"
+    },
+    "measure_map": {
+      "v136": "c0",
+      "v143": "c1"
+    },
+    "tvd_loss": 0.059814453125,
+    "noisy_counts": {
+      "00": 4071,
+      "10": 33,
+      "01": 4068,
+      "11": 20
+    },
+    "real_counts": {
+      "00": 4316,
+      "01": 3876
+    },
+    "state_details": {
+      "00": {
+        "noisy_prob": 0.4969482421875,
+        "real_prob": 0.52685546875,
+        "abs_diff": 0.0299072265625,
+        "noisy_count": 4071,
+        "real_count": 4316
+      },
+      "01": {
+        "noisy_prob": 0.49658203125,
+        "real_prob": 0.47314453125,
+        "abs_diff": 0.0234375,
+        "noisy_count": 4068,
+        "real_count": 3876
+      },
+      "10": {
+        "noisy_prob": 0.0040283203125,
+        "real_prob": 0.0,
+        "abs_diff": 0.0040283203125,
+        "noisy_count": 33,
+        "real_count": 0
+      },
+      "11": {
+        "noisy_prob": 0.00244140625,
+        "real_prob": 0.0,
+        "abs_diff": 0.00244140625,
+        "noisy_count": 20,
+        "real_count": 0
+      }
+    },
+    "job_id": "d51lul1smlfc739d2df0",
+    "backend": "ibm_fez"
+  },
+  {
+    "file": "seq_007.qpy",
+    "file_path": "tmp/circuits/seq_007.qpy",
+    "num_qubits": 144,
+    "num_instructions": 6,
+    "measured_virtual_qubits": [
+      136,
+      143
+    ],
+    "measured_physical_qubits": [],
+    "physical_qubits": [
+      136,
+      143
+    ],
+    "qubit_mapping": {
+      "v136": "p0",
+      "v143": "p1"
+    },
+    "measure_map": {
+      "v136": "c0",
+      "v143": "c1"
+    },
+    "tvd_loss": 0.05908203125,
+    "noisy_counts": {
+      "00": 7613,
+      "10": 85,
+      "01": 487,
+      "11": 7
+    },
+    "real_counts": {
+      "00": 7855,
+      "01": 337
+    },
+    "state_details": {
+      "00": {
+        "noisy_prob": 0.9293212890625,
+        "real_prob": 0.9588623046875,
+        "abs_diff": 0.029541015625,
+        "noisy_count": 7613,
+        "real_count": 7855
+      },
+      "01": {
+        "noisy_prob": 0.0594482421875,
+        "real_prob": 0.0411376953125,
+        "abs_diff": 0.018310546875,
+        "noisy_count": 487,
+        "real_count": 337
+      },
+      "10": {
+        "noisy_prob": 0.0103759765625,
+        "real_prob": 0.0,
+        "abs_diff": 0.0103759765625,
+        "noisy_count": 85,
+        "real_count": 0
+      },
+      "11": {
+        "noisy_prob": 0.0008544921875,
+        "real_prob": 0.0,
+        "abs_diff": 0.0008544921875,
+        "noisy_count": 7,
+        "real_count": 0
+      }
+    },
+    "job_id": "d51lun7p3tbc73aklu10",
+    "backend": "ibm_fez"
+  },
+  {
+    "file": "seq_008.qpy",
+    "file_path": "tmp/circuits/seq_008.qpy",
+    "num_qubits": 144,
+    "num_instructions": 4,
+    "measured_virtual_qubits": [
+      142,
+      143
+    ],
+    "measured_physical_qubits": [],
+    "physical_qubits": [
+      142,
+      143
+    ],
+    "qubit_mapping": {
+      "v142": "p0",
+      "v143": "p1"
+    },
+    "measure_map": {
+      "v142": "c0",
+      "v143": "c1"
+    },
+    "tvd_loss": 0.07421875,
+    "noisy_counts": {
+      "00": 4035,
+      "10": 36,
+      "01": 4086,
+      "11": 35
+    },
+    "real_counts": {
+      "00": 4339,
+      "10": 3,
+      "01": 3846,
+      "11": 4
+    },
+    "state_details": {
+      "00": {
+        "noisy_prob": 0.4925537109375,
+        "real_prob": 0.5296630859375,
+        "abs_diff": 0.037109375,
+        "noisy_count": 4035,
+        "real_count": 4339
+      },
+      "01": {
+        "noisy_prob": 0.498779296875,
+        "real_prob": 0.469482421875,
+        "abs_diff": 0.029296875,
+        "noisy_count": 4086,
+        "real_count": 3846
+      },
+      "10": {
+        "noisy_prob": 0.00439453125,
+        "real_prob": 0.0003662109375,
+        "abs_diff": 0.0040283203125,
+        "noisy_count": 36,
+        "real_count": 3
+      },
+      "11": {
+        "noisy_prob": 0.0042724609375,
+        "real_prob": 0.00048828125,
+        "abs_diff": 0.0037841796875,
+        "noisy_count": 35,
+        "real_count": 4
+      }
+    },
+    "job_id": "d51lup3ht8fs739t6c9g",
+    "backend": "ibm_fez"
+  },
+  {
+    "file": "seq_009.qpy",
+    "file_path": "tmp/circuits/seq_009.qpy",
+    "num_qubits": 144,
+    "num_instructions": 4,
+    "measured_virtual_qubits": [
+      136,
+      143
+    ],
+    "measured_physical_qubits": [],
+    "physical_qubits": [
+      136,
+      143
+    ],
+    "qubit_mapping": {
+      "v136": "p0",
+      "v143": "p1"
+    },
+    "measure_map": {
+      "v136": "c0",
+      "v143": "c1"
+    },
+    "tvd_loss": 0.028564453125,
+    "noisy_counts": {
+      "00": 2062,
+      "10": 2080,
+      "01": 2001,
+      "11": 2049
+    },
+    "real_counts": {
+      "00": 2168,
+      "10": 2042,
+      "01": 2012,
+      "11": 1970
+    },
+    "state_details": {
+      "00": {
+        "noisy_prob": 0.251708984375,
+        "real_prob": 0.2646484375,
+        "abs_diff": 0.012939453125,
+        "noisy_count": 2062,
+        "real_count": 2168
+      },
+      "01": {
+        "noisy_prob": 0.2442626953125,
+        "real_prob": 0.24560546875,
+        "abs_diff": 0.0013427734375,
+        "noisy_count": 2001,
+        "real_count": 2012
+      },
+      "10": {
+        "noisy_prob": 0.25390625,
+        "real_prob": 0.249267578125,
+        "abs_diff": 0.004638671875,
+        "noisy_count": 2080,
+        "real_count": 2042
+      },
+      "11": {
+        "noisy_prob": 0.2501220703125,
+        "real_prob": 0.240478515625,
+        "abs_diff": 0.0096435546875,
+        "noisy_count": 2049,
+        "real_count": 1970
+      }
+    },
+    "job_id": "d51lur7p3tbc73aklu50",
+    "backend": "ibm_fez"
+  },
+  {
+    "file": "seq_010.qpy",
+    "file_path": "tmp/circuits/seq_010.qpy",
+    "num_qubits": 108,
+    "num_instructions": 3,
+    "measured_virtual_qubits": [
+      107
+    ],
+    "measured_physical_qubits": [],
+    "physical_qubits": [
+      107
+    ],
+    "qubit_mapping": {
+      "v107": "p0"
+    },
+    "measure_map": {
+      "v107": "c0"
+    },
+    "tvd_loss": 0.011962890625,
+    "noisy_counts": {
+      "0": 4138,
+      "1": 4054
+    },
+    "real_counts": {
+      "0": 4089,
+      "1": 4103
+    },
+    "state_details": {
+      "0": {
+        "noisy_prob": 0.505126953125,
+        "real_prob": 0.4991455078125,
+        "abs_diff": 0.0059814453125,
+        "noisy_count": 4138,
+        "real_count": 4089
+      },
+      "1": {
+        "noisy_prob": 0.494873046875,
+        "real_prob": 0.5008544921875,
+        "abs_diff": 0.0059814453125,
+        "noisy_count": 4054,
+        "real_count": 4103
+      }
+    },
+    "job_id": "d51lut9smlfc739d2dmg",
+    "backend": "ibm_fez"
+  }
+]

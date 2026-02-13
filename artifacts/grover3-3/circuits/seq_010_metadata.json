@@ -1,41 +1,44 @@
 {
-  "sequence": "rz(97, 1.5708) \u2192 sx(97) \u2192 rz(97, 1.5708)",
-  "count": 3,
+  "sequence": "rz(106, -4.7124) \u2192 sx(107) \u2192 rz(107, -3.1416)",
+  "count": 4,
   "reports": [
     0,
     2,
-    3
+    3,
+    4
   ],
   "physical_qubits": [
-    97
+    106,
+    107
   ],
   "qubit_mapping": {
-    "97": 0
+    "106": 0,
+    "107": 1
   },
   "operations": [
     {
       "operation": "rz",
       "qubits": [
-        97
+        106
       ],
       "params": [
-        1.5707963267948966
+        -4.712388980384689
       ]
     },
     {
       "operation": "sx",
       "qubits": [
-        97
+        107
       ],
       "params": []
     },
     {
       "operation": "rz",
       "qubits": [
-        97
+        107
       ],
       "params": [
-        1.5707963267948966
+        -3.141592653589793
       ]
     }
   ]

@@ -1,0 +1,44 @@
+{
+  "sequence": "sx(143) \u2192 rz(143, -2.7489) \u2192 sx(143)",
+  "count": 11,
+  "reports": [
+    1,
+    2,
+    3,
+    5,
+    6,
+    7,
+    9
+  ],
+  "physical_qubits": [
+    143
+  ],
+  "qubit_mapping": {
+    "143": 0
+  },
+  "operations": [
+    {
+      "operation": "sx",
+      "qubits": [
+        143
+      ],
+      "params": []
+    },
+    {
+      "operation": "rz",
+      "qubits": [
+        143
+      ],
+      "params": [
+        -2.7488935718910685
+      ]
+    },
+    {
+      "operation": "sx",
+      "qubits": [
+        143
+      ],
+      "params": []
+    }
+  ]
+}
