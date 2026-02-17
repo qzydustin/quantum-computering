@@ -5,6 +5,7 @@ from datetime import datetime
 import json
 
 from qiskit import QuantumCircuit
+from .measurement_projection import project_counts
 
 
 class QuantumDeltaDebugger:
@@ -217,65 +218,6 @@ class QuantumDeltaDebugger:
     def evaluate_circuit(self, circuit: QuantumCircuit, shots: int = 2048) -> Tuple[float, Dict[str, int], Dict[str, int]]:
         self.test_count += 1
 
-        def _project_counts(counts: Dict[str, int], measured_qubits: List[int]) -> Dict[str, int]:
-            """
-            Project measurement results to specified qubits
-            
-            Args:
-                counts: Full measurement counts dict, key is bitstring (in clbit order)
-                measured_qubits: List of measured qubit indices (sorted)
-                
-            Returns:
-                Counts dict containing only measured qubits
-                
-            Note:
-                Qiskit counts bitstring is ordered by clbits, typically little-endian (right side is LSB)
-                Need to map qubit indices to clbit indices via measure_map
-            """
-            from collections import defaultdict
-            acc = defaultdict(int)
-            
-            # Check if measure_map has all required qubits
-            missing_qubits = [q for q in measured_qubits if q not in self.measure_map]
-            if missing_qubits:
-                # If some qubits are missing from measure_map, try to use all clbits
-                # This can happen when circuit is compiled and qubit indices change
-                print(f"⚠️  Warning: Some measured qubits not in measure_map: {missing_qubits}")
-                print(f"   measure_map keys: {list(self.measure_map.keys())}")
-                print(f"   measured_qubits: {measured_qubits}")
-                # Use all clbits if available
-                if counts:
-                    # Get bitstring length from first count
-                    first_key = next(iter(counts.keys()))
-                    bitstring_length = len(first_key.replace(" ", ""))
-                    # If we have the right number of clbits, use them all
-                    if bitstring_length == len(measured_qubits):
-                        clbits_in_order = list(range(bitstring_length))
-                    else:
-                        # Try to find clbits that correspond to measured qubits
-                        # If measure_map is incomplete, we may need to use all clbits
-                        clbits_in_order = list(range(min(bitstring_length, len(measured_qubits))))
-                else:
-                    return {}
-            else:
-                # Compute clbit index sequence (in qubit order)
-                clbits_in_order = [self.measure_map[q] for q in measured_qubits]
-            
-            for k, v in (counts or {}).items():
-                bits = k.replace(" ", "")
-                # Qiskit uses little-endian: bits[::-1][c] gets the value of clbit c
-                try:
-                    # Check if we have enough bits
-                    if len(bits) < max(clbits_in_order) + 1:
-                        # Skip if bitstring is too short
-                        continue
-                    projected_bits = ''.join(bits[::-1][c] for c in clbits_in_order)
-                    acc[projected_bits] += v
-                except (IndexError, KeyError):
-                    # Skip counts with mismatched length or missing clbits
-                    continue
-            return dict(acc)
-
         # Use measured qubits from the circuit
         measured_qubits = sorted(self.measured_qubits_list)
 
@@ -283,7 +225,13 @@ class QuantumDeltaDebugger:
         baseline = self.executor.run_circuit(circuit, execution_type=self.baseline_execution_type, shots=shots)
         if not baseline.get("success"):
             raise RuntimeError(f"Baseline execution failed: {baseline.get('error')}")
-        baseline_counts = _project_counts(baseline.get("counts", {}), measured_qubits)
+        baseline_counts = project_counts(
+            baseline.get("counts", {}),
+            measured_qubits,
+            self.measure_map,
+            allow_fallback=True,
+            log_warnings=True,
+        )
         total_baseline = sum(baseline_counts.values())
         
         # Check that counts after projection are not empty
@@ -300,7 +248,13 @@ class QuantumDeltaDebugger:
             test = self.executor.run_circuit(circuit, execution_type=self.test_execution_type, shots=shots)
         if not test.get("success"):
             raise RuntimeError(f"Test execution failed: {test.get('error')}")
-        test_counts = _project_counts(test.get("counts", {}), measured_qubits)
+        test_counts = project_counts(
+            test.get("counts", {}),
+            measured_qubits,
+            self.measure_map,
+            allow_fallback=True,
+            log_warnings=True,
+        )
         total_test = sum(test_counts.values())
         
         # Check that counts after projection are not empty

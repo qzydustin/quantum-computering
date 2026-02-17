@@ -15,14 +15,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add src directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 
-from ibm_quantum_connector import QuantumServiceManager
-from quantum_utils import (
+from quantum.ibm_quantum_connector import QuantumServiceManager
+from quantum.circuit_artifacts import (
     load_existing_circuit,
     visualize_circuit,
     save_circuit_with_diagram

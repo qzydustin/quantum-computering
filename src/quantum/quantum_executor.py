@@ -9,7 +9,7 @@ from qiskit_aer.noise import NoiseModel
 from qiskit_ibm_runtime import SamplerV2 as RuntimeSampler
 
 from .ibm_quantum_connector import QuantumServiceManager
-from .quantum_utils import calculate_tvd
+from .metrics import calculate_tvd
 
 
 def _sort_bitstrings(d: Dict[str, Any], num_bits: Optional[int] = None) -> Dict[str, Any]:
@@ -197,7 +197,7 @@ class QuantumExecutor:
             noisy = self.run_noisy_by_isa(isa_circuit, shots, param_vals)
             real = self.run_real_by_isa(isa_circuit, shots, param_vals)
             
-            # Calculate distribution difference between noisy and real using calculate_tvd from verify_circuits
+            # Calculate distribution difference between noisy and real
             noisy_counts = noisy.get("counts", {})
             real_counts = real.get("counts", {})
             tvd_loss, state_details = calculate_tvd(noisy_counts, real_counts)

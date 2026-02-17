@@ -8,7 +8,7 @@ import glob
 import os
 import shutil
 from collections import defaultdict
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, Optional
 from qiskit import QuantumCircuit, qpy
 import numpy as np
 
@@ -198,18 +198,25 @@ def print_analysis(analysis: dict):
             print(f"  {seq}")
             print(f"    Count: {data['count']}, Reports: {data['reports']}")
 
-def analyze_and_generate_circuits(data_dir: str = "delta_debug_data", output_dir: str = "tmp"):
+def analyze_and_generate_circuits(
+    data_dir: str = "delta_debug_data",
+    output_dir: Optional[str] = "tmp",
+    top_k: int = 10,
+    persist: bool = True,
+):
     """
     Analyze problematic segments from delta debug reports and generate circuits.
     
     Args:
         data_dir: Directory containing delta_debug_report_*.json files (searches up to 2 levels deep)
         output_dir: Directory to save analysis results and generated circuits
+        top_k: Number of top frequent sequences to use
+        persist: Whether to write artifacts to disk
     
     Returns:
-        dict: Analysis results including sequences and statistics
+        dict: Analysis results including sequences/statistics and in-memory circuits
     """
-    circuits_dir = os.path.join(output_dir, "circuits")
+    circuits_dir = os.path.join(output_dir, "circuits") if output_dir else None
     
     # Find report files (search up to 2 levels deep)
     if not os.path.exists(data_dir):
@@ -246,82 +253,92 @@ def analyze_and_generate_circuits(data_dir: str = "delta_debug_data", output_dir
     analysis = analyze_sequences(reports)
     print_analysis(analysis)
     
-    # Save analysis to tmp directory
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Clean and recreate circuits directory to remove old files from previous runs
-    if os.path.exists(circuits_dir):
-        shutil.rmtree(circuits_dir)
-    os.makedirs(circuits_dir)
-    
-    output_path = os.path.join(output_dir, "sequence_analysis.json")
-    
-    # Prepare JSON output for top 10 sequences (without operations objects)
-    top_10_sequences = list(analysis['all_sequences'].items())[:10]
-    json_output = {
+    # Prepare JSON output for top-K sequences (without operation objects)
+    top_sequences = list(analysis['all_sequences'].items())[:top_k]
+    sequence_analysis = {
         'summary': analysis['summary'],
-        'top_10_sequences': {k: {'count': v['count'], 'reports': v['reports']} 
-                            for k, v in top_10_sequences}
+        f'top_{top_k}_sequences': {k: {'count': v['count'], 'reports': v['reports']}
+                                   for k, v in top_sequences},
+        'top_10_sequences': {k: {'count': v['count'], 'reports': v['reports']}
+                            for k, v in top_sequences[:10]}
     }
-    
-    with open(output_path, 'w') as f:
-        json.dump(json_output, f, indent=2)
-    
-    print(f"\n✅ Analysis saved to: {output_path}")
-    
-    # Generate circuits for top 10 sequences
+
+    if persist and output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+        # Clean and recreate circuits directory to remove old files from previous runs
+        if circuits_dir and os.path.exists(circuits_dir):
+            shutil.rmtree(circuits_dir)
+        if circuits_dir:
+            os.makedirs(circuits_dir)
+
+        output_path = os.path.join(output_dir, "sequence_analysis.json")
+        with open(output_path, 'w') as f:
+            json.dump(sequence_analysis, f, indent=2)
+        print(f"\n✅ Analysis saved to: {output_path}")
+
     print(f"\n{'='*80}")
-    print("🔧 Generating Quantum Circuits (Top 10)")
+    print(f"🔧 Generating Quantum Circuits (Top {top_k})")
     print('='*80)
-    
+
     circuits_generated = 0
-    top_10_sequences = list(analysis['all_sequences'].items())[:10]
-    for idx, (seq_name, data) in enumerate(top_10_sequences, 1):
+    generated_circuits = []
+    for idx, (seq_name, data) in enumerate(top_sequences, 1):
         try:
             seq_ops = data['operations']
             circuit_name = f"seq_{idx:03d}"
             qc = create_circuit_from_sequence(seq_ops, name=circuit_name)
-            
-            # Save circuit as QPY (Qiskit's binary format)
-            qpy_path = os.path.join(circuits_dir, f"{circuit_name}.qpy")
-            with open(qpy_path, 'wb') as f:
-                qpy.dump(qc, f)
-            
-            # Save circuit as QASM string
-            qasm_path = os.path.join(circuits_dir, f"{circuit_name}.qasm")
-            try:
-                # Try OpenQASM 2.0
-                from qiskit import qasm2
-                qasm_str = qasm2.dumps(qc)
-                with open(qasm_path, 'w') as f:
-                    f.write(qasm_str)
-            except Exception:
-                # Fallback to simple string representation
-                with open(qasm_path, 'w') as f:
-                    f.write(str(qc))
-            
-            # Save circuit diagram as text
-            diagram_path = os.path.join(circuits_dir, f"{circuit_name}_diagram.txt")
-            with open(diagram_path, 'w') as f:
-                f.write(f"Circuit: {seq_name}\n")
-                f.write(f"Count: {data['count']}, Reports: {data['reports']}\n")
-                f.write("="*60 + "\n")
-                f.write(str(qc.draw(output='text', fold=-1)))
-                f.write("\n\n")
-                f.write("Physical Qubits: " + str(qc.metadata['physical_qubits']) + "\n")
-            
-            # Save circuit metadata
-            metadata_path = os.path.join(circuits_dir, f"{circuit_name}_metadata.json")
-            with open(metadata_path, 'w') as f:
-                json.dump({
-                    'sequence': seq_name,
-                    'count': data['count'],
-                    'reports': data['reports'],
-                    'physical_qubits': qc.metadata['physical_qubits'],
-                    'qubit_mapping': qc.metadata['qubit_mapping'],
-                    'operations': qc.metadata['operations']
-                }, f, indent=2)
-            
+
+            generated_entry = {
+                'circuit_name': circuit_name,
+                'sequence': seq_name,
+                'count': data['count'],
+                'reports': data['reports'],
+                'circuit': qc,
+                'physical_qubits': qc.metadata['physical_qubits'],
+                'qubit_mapping': qc.metadata['qubit_mapping'],
+                'operations': qc.metadata['operations'],
+            }
+            generated_circuits.append(generated_entry)
+
+            if persist and circuits_dir:
+                # Save circuit as QPY (Qiskit's binary format)
+                qpy_path = os.path.join(circuits_dir, f"{circuit_name}.qpy")
+                with open(qpy_path, 'wb') as f:
+                    qpy.dump(qc, f)
+
+                # Save circuit as QASM string
+                qasm_path = os.path.join(circuits_dir, f"{circuit_name}.qasm")
+                try:
+                    from qiskit import qasm2
+                    qasm_str = qasm2.dumps(qc)
+                    with open(qasm_path, 'w') as f:
+                        f.write(qasm_str)
+                except Exception:
+                    with open(qasm_path, 'w') as f:
+                        f.write(str(qc))
+
+                # Save circuit diagram as text
+                diagram_path = os.path.join(circuits_dir, f"{circuit_name}_diagram.txt")
+                with open(diagram_path, 'w') as f:
+                    f.write(f"Circuit: {seq_name}\n")
+                    f.write(f"Count: {data['count']}, Reports: {data['reports']}\n")
+                    f.write("=" * 60 + "\n")
+                    f.write(str(qc.draw(output='text', fold=-1)))
+                    f.write("\n\n")
+                    f.write("Physical Qubits: " + str(qc.metadata['physical_qubits']) + "\n")
+
+                # Save circuit metadata
+                metadata_path = os.path.join(circuits_dir, f"{circuit_name}_metadata.json")
+                with open(metadata_path, 'w') as f:
+                    json.dump({
+                        'sequence': seq_name,
+                        'count': data['count'],
+                        'reports': data['reports'],
+                        'physical_qubits': qc.metadata['physical_qubits'],
+                        'qubit_mapping': qc.metadata['qubit_mapping'],
+                        'operations': qc.metadata['operations']
+                    }, f, indent=2)
+
             print(f"  ✓ {circuit_name}: {seq_name}")
             circuits_generated += 1
             
@@ -331,11 +348,17 @@ def analyze_and_generate_circuits(data_dir: str = "delta_debug_data", output_dir
             import traceback
             traceback.print_exc()
     
-    print(f"\n✅ Generated {circuits_generated} circuits in: {circuits_dir}/")
-    print("   - QPY files: *.qpy (binary, can be loaded with qpy.load())")
-    print("   - QASM files: *.qasm")
-    print("   - Diagrams: *_diagram.txt")
-    print("   - Metadata: *_metadata.json")
-    
-    return analysis
+    if persist and circuits_dir:
+        print(f"\n✅ Generated {circuits_generated} circuits in: {circuits_dir}/")
+        print("   - QPY files: *.qpy (binary, can be loaded with qpy.load())")
+        print("   - QASM files: *.qasm")
+        print("   - Diagrams: *_diagram.txt")
+        print("   - Metadata: *_metadata.json")
+    else:
+        print(f"\n✅ Generated {circuits_generated} circuits in memory")
+
+    result = dict(analysis)
+    result['sequence_analysis'] = sequence_analysis
+    result['generated_circuits'] = generated_circuits
+    return result
     
