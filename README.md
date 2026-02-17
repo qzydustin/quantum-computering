@@ -1,14 +1,12 @@
-# Sequence Loss Analysis Guide (grover3-3)
+# Sequence Loss Analysis Guide
 
-This guide explains the sequence-loss charts exported for `artifacts/grover3-3`.
+This guide explains the active analysis outputs for `artifacts/grover3-3`.
 
-Current recommended chart set:
+Current chart set:
 - `slot/1.png`
 - `slot/2.png`
 - `slot/3.png`
-- `slot/05_tvd_loss_vs_report_support.png`
-
-The former frequency-only chart (`02_caught_occurrences_top_sequences.png`) is intentionally excluded from the default analysis flow because its signal is largely covered by the normalized chart (03).
+- `slot/4.png`
 
 ## Scope and Data Model
 
@@ -25,14 +23,14 @@ The former frequency-only chart (`02_caught_occurrences_top_sequences.png`) is i
 - `caught`: sequences extracted only from problematic segments.
 - `total`: sequences extracted from full segmented circuit information.
 
-### Metrics
+### Core metrics
 - `reports_caught`: number of report files where a sequence is caught at least once.
 - `report_hit_rate = reports_caught / total_reports`
 - `caught_occurrences`: number of problematic hits for a sequence.
 - `total_occurrences`: number of all appearances for the same sequence.
 - `occurrence_capture_rate = caught_occurrences / total_occurrences`
 
-## Figure-by-Figure Explanation
+## Figure Guide
 
 ## 1) `slot/1.png`
 
@@ -46,7 +44,6 @@ Which sequences are repeatedly associated with problematic segments across multi
 
 ### Interpretation
 - Higher bars indicate stronger cross-report reproducibility.
-- This is the best chart for selecting stable candidates for deeper debugging.
 
 ## 2) `slot/2.png`
 
@@ -59,69 +56,38 @@ How risky a sequence is when it appears.
 - Bar annotation: `caught_occurrences / total_occurrences`
 
 ### Interpretation
-- Near `1.0`: when this sequence appears, it is frequently in problematic regions.
-- Lower values: sequence may be common but weakly associated with problems.
-- Use this chart to avoid over-prioritizing high-frequency but low-specificity patterns.
+- Near `1.0`: sequence is frequently problematic when it appears.
+- Lower values: sequence may be common but weakly associated with problem segments.
 
 ## 3) `slot/3.png`
 
 ### What it answers
 Where in the circuit (operation index) problematic hits concentrate.
 
-### Axes and legend
+### Axes and labels
 - X-axis: operation index (`1..N`)
 - Y-axis: stacked problem-hit rate
 - Colors: per-report contribution
 
 ### Interpretation
-- Taller stacked bars indicate positional hotspots.
-- If multiple report colors pile up at similar indices, that location is a robust hotspot.
+- Taller bars indicate positional hotspots.
 
-## 4) `slot/05_tvd_loss_vs_report_support.png`
+## 4) `slot/4.png`
 
 ### What it answers
-Whether high-TVD candidate segments also have strong cross-report support.
+A concrete verification snapshot of expected vs observed error rate.
 
-### Axes and labels
-- Bars (left axis): `tvd_loss` per candidate circuit/sequence
-- Line (right axis): `report_support_rate = len(reports) / total_reports`
-- Bar annotation: `count` from sequence analysis
+### Plot contents
+- Bar 1: Expected error rate from repeated noisy-simulator runs.
+- Bar 2: Observed error rate from real-backend referenced TVD.
 
 ### Interpretation
-- High bar + high line point: strong candidate (large distribution gap and reproducible across reports).
-- High bar + low line point: possibly severe but unstable/rare candidate.
-- Low bar + high line point: frequent pattern with weaker distribution deviation.
+- If the observed bar is much higher than expected, the segment is likely under-modeled by the current noise assumptions.
+- This figure is intended as a concise evidence slide for reporting a concrete deviation case.
 
-## Recommended Reading Order
+## Recommended reading order
 
-1. Start with `01` to find sequences with strong cross-report consistency.
-2. Use `03` to prioritize sequences with high conditional risk.
-3. Use `04` to map those sequence risks back to concrete circuit positions.
-4. Use `05` to validate that high-risk candidates also carry meaningful TVD evidence.
-
-## Why `02` Was Removed From the Default Set
-
-`02_caught_occurrences_top_sequences.png` is raw volume only.
-- It is useful for quick counting.
-- But it does not normalize by background occurrence.
-- In practice, `03` carries the more decision-relevant signal for triage.
-
-So the default minimal and high-value set is:
-- `01` (stability across reports)
-- `03` (risk density)
-- `04` (positional localization)
-- `05` (independent TVD evidence + report support)
-
-## Reproducibility
-
-Main notebook:
-- `notebooks/sequence_loss_analysis.ipynb`
-
-Export helper script:
-- `scripts/export_sequence_loss_slot.py`
-
-Run (venv):
-- `.venv/bin/python scripts/export_sequence_loss_slot.py`
-
-If matplotlib cache permissions are restricted:
-- `MPLBACKEND=Agg MPLCONFIGDIR=/tmp/mpl XDG_CACHE_HOME=/tmp HOME=/tmp .venv/bin/python scripts/export_sequence_loss_slot.py`
+1. `1` for cross-report stability.
+2. `2` for conditional risk.
+3. `3` for location in the circuit.
+4. `4` for a concrete verification-style summary.

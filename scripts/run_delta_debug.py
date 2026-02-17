@@ -168,7 +168,9 @@ def run_delta_experiment(
 
     print("\n" + "=" * 60)
     print("✅ Experiment completed")
-    print("Post-processing is available in notebooks/post_delta_analysis.ipynb")
+    print("Post-processing notebooks:")
+    print("  - notebooks/sequence_loss_analysis.ipynb")
+    print("  - notebooks/noisy_expected_vs_observed.ipynb")
     print("=" * 60)
 
 

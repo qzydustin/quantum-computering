@@ -33,9 +33,9 @@ class QuantumExecutor:
         self.ideal_sim = AerSimulator()
         self.noisy_sim = None
         # Select IBM backend per config
-        svc = QuantumServiceManager(config_file=config_file)
-        assert svc.connect(), 'Failed to connect to IBM Quantum service'
-        self.backend = svc.select_backend()
+        self.service_manager = QuantumServiceManager(config_file=config_file)
+        assert self.service_manager.connect(), 'Failed to connect to IBM Quantum service'
+        self.backend = self.service_manager.select_backend()
         assert self.backend is not None, 'Failed to select backend'
         
         sim = AerSimulator.from_backend(self.backend)
@@ -173,6 +173,61 @@ class QuantumExecutor:
             shots=shots,
             method="Runtime SamplerV2 (job mode, ISA only)"
         )
+
+    def submit_real_job_by_isa(
+        self,
+        isa_circuit: QuantumCircuit,
+        shots: int = 1024,
+        param_vals: Optional[Sequence[float]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Submit a real-device runtime job without blocking on result().
+        Returns job metadata for tracking.
+        """
+        sampler = RuntimeSampler(mode=self.backend)
+        pub = (isa_circuit, [] if not isa_circuit.parameters else (param_vals or [0.0] * len(isa_circuit.parameters)), shots)
+        job = sampler.run([pub], shots=shots)
+        job_id = job.job_id() if hasattr(job, "job_id") and callable(job.job_id) else None
+        status = str(job.status()) if hasattr(job, "status") and callable(job.status) else "UNKNOWN"
+        return {
+            "success": True,
+            "execution_type": "real_device",
+            "backend": None if self.backend is None else getattr(self.backend, "name", None),
+            "job_id": job_id,
+            "status": status,
+            "shots": shots,
+            "method": "Runtime SamplerV2 (async submit)",
+        }
+
+    def get_real_job_result(self, job_id: str, shots: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Fetch a previously submitted runtime job and return standardized counts/probabilities.
+        """
+        job = self.service_manager.get_job(job_id)
+        if job is None:
+            return {"success": False, "error": f"Job not found: {job_id}"}
+
+        try:
+            res = job.result()
+            counts = self._result_to_counts(res)
+            use_shots = shots or self.config["execution"]["shots"]
+            probs = self._counts_to_probabilities(counts, use_shots)
+            return self._standard_result(
+                execution_type="real_device",
+                backend_name=None if self.backend is None else getattr(self.backend, "name", None),
+                job_id=job_id,
+                counts=counts,
+                probabilities=probs,
+                shots=use_shots,
+                method="Runtime SamplerV2 (fetch by job_id)",
+            )
+        except Exception as e:
+            return {"success": False, "job_id": job_id, "error": str(e)}
+
+    def cancel_real_job(self, job_id: str) -> Dict[str, Any]:
+        """Cancel a runtime job by ID."""
+        ok = self.service_manager.cancel_job(job_id)
+        return {"success": ok, "job_id": job_id}
     
     def run_circuit(
         self,

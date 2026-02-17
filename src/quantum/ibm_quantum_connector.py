@@ -1,4 +1,5 @@
 import json
+from typing import Any, Dict, List, Optional
 from qiskit_ibm_runtime import QiskitRuntimeService
 
 class QuantumServiceManager:
@@ -14,6 +15,7 @@ class QuantumServiceManager:
         self.config = self._load_config(config_file)
         self.service = None
         self.backend = None
+        self.last_connect_error = None
         
     def _load_config(self, config_file):
         """Load configuration from JSON file"""
@@ -29,17 +31,47 @@ class QuantumServiceManager:
     
     def connect(self):
         """Connect to IBM Quantum service"""
-        try:
-            config = self.config["ibm_quantum"]
-            self.service = QiskitRuntimeService(
-                token=config["token"],
-                channel=config["channel"],
-                instance=config["instance"]
-            )
-            return True
-        except Exception as e:
-            print(f"Failed to connect to IBM Quantum service: {e}")
-            return False
+        config = self.config["ibm_quantum"]
+        token = config.get("token")
+        channel = config.get("channel")
+        instance = config.get("instance")
+
+        # Try config as-is first.
+        attempts: List[Dict[str, Any]] = [{
+            "token": token,
+            "channel": channel,
+            "instance": instance,
+        }]
+
+        # For platform channel, instance may be optional depending on account setup.
+        if channel == "ibm_quantum_platform":
+            attempts.append({
+                "token": token,
+                "channel": channel,
+            })
+
+        # De-duplicate attempts.
+        dedup = []
+        seen = set()
+        for a in attempts:
+            key = (a.get("channel"), a.get("instance"))
+            if key in seen:
+                continue
+            seen.add(key)
+            dedup.append(a)
+
+        last_error = None
+        for kwargs in dedup:
+            try:
+                self.service = QiskitRuntimeService(**kwargs)
+                self.last_connect_error = None
+                return True
+            except Exception as e:
+                last_error = e
+
+        self.last_connect_error = last_error
+        print(f"Failed to connect to IBM Quantum service: {last_error}")
+        return False
     
     def select_backend(self):
         """
@@ -58,4 +90,46 @@ class QuantumServiceManager:
             return self.backend
         except Exception as e:
             print(f"Failed to select backend {backend_name}: {e}")
-            return None 
+            return None
+
+    def get_job(self, job_id: str):
+        """Fetch one runtime job by ID."""
+        if not self.service:
+            return None
+        try:
+            return self.service.job(job_id)
+        except Exception as e:
+            print(f"Failed to get job {job_id}: {e}")
+            return None
+
+    def list_jobs(
+        self,
+        limit: int = 20,
+        pending: Optional[bool] = None,
+        backend_name: Optional[str] = None,
+    ):
+        """List runtime jobs with optional filters."""
+        if not self.service:
+            return []
+        kwargs: Dict[str, Any] = {"limit": limit}
+        if pending is not None:
+            kwargs["pending"] = pending
+        if backend_name:
+            kwargs["backend_name"] = backend_name
+        try:
+            return self.service.jobs(**kwargs)
+        except Exception as e:
+            print(f"Failed to list jobs: {e}")
+            return []
+
+    def cancel_job(self, job_id: str) -> bool:
+        """Cancel one runtime job by ID."""
+        job = self.get_job(job_id)
+        if not job:
+            return False
+        try:
+            job.cancel()
+            return True
+        except Exception as e:
+            print(f"Failed to cancel job {job_id}: {e}")
+            return False
