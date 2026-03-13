@@ -38,7 +38,7 @@ def load_circuit(artifacts_dir: Path):
 def run_experiment(
     algorithm_dir: str,
     config_file: str = "quantum_config.json",
-    tolerance: float = 0.01,
+    tolerance: float | None = None,
     max_granularity: int = 16,
     test_mode: bool = False,
     resume_from: str | None = None,
@@ -56,6 +56,13 @@ def run_experiment(
 
     config_path = str((REPO_ROOT / config_file).resolve())
     executor = QuantumExecutor(config_file=config_path)
+    tolerance = (
+        executor.config.get("execution", {})
+        .get("delta_debug", {})
+        .get("tolerance", 0.01)
+        if tolerance is None
+        else tolerance
+    )
 
     # Load resume candidates from previous result
     resume_candidates = None
@@ -160,7 +167,7 @@ def main():
     parser = argparse.ArgumentParser(description="Delta debugging experiment runner")
     parser.add_argument("--algorithm", "-a", required=True, help="Artifacts directory")
     parser.add_argument("--config", default="quantum_config.json")
-    parser.add_argument("--tolerance", type=float, default=0.01)
+    parser.add_argument("--tolerance", type=float)
     parser.add_argument("--max-granularity", type=int, default=16)
     parser.add_argument("--test-mode", action="store_true")
     parser.add_argument("--resume", help="Path to previous JSON result to resume from")

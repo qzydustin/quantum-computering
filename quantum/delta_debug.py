@@ -24,19 +24,19 @@ class QuantumDeltaDebugger:
         "mcx", "mcy", "mcz", "ccx", "ccy", "ccz",
     ])
     SKIP_OPS = frozenset(["measure", "barrier", "delay", "reset"])
-    MAX_LAYER_SIZE = 5
-
     def __init__(
         self,
         executor,
-        tolerance: float = 0.01,
+        tolerance: Optional[float] = None,
         test_mode: bool = False,
         max_granularity: int = 16,
+        max_layer_size: Optional[int] = None,
     ) -> None:
         self.executor = executor
-        self.tolerance = float(tolerance)
+        self.tolerance = float(self._config_tolerance() if tolerance is None else tolerance)
         self.test_mode: bool = bool(test_mode)
         self.max_granularity = int(max_granularity)
+        self.max_layer_size = int(max_layer_size or self._config_max_layer_size())
 
         if self.test_mode:
             self.test_execution_type = "noisy_simulator"
@@ -52,6 +52,26 @@ class QuantumDeltaDebugger:
         self.test_count: int = 0
         self.ddmin_log: List[Dict[str, Any]] = []
         self._on_step: Optional[Callable[[Dict[str, Any]], None]] = None
+
+    def _config_max_layer_size(self) -> int:
+        execution = self.executor.config.get("execution", {})
+        delta_debug = execution.get("delta_debug", {})
+        if "max_layer_size" not in delta_debug:
+            raise ValueError("Missing execution.delta_debug.max_layer_size in config")
+        value = delta_debug["max_layer_size"]
+        try:
+            return max(1, int(value))
+        except (TypeError, ValueError):
+            raise ValueError(f"Invalid execution.delta_debug.max_layer_size: {value!r}")
+
+    def _config_tolerance(self) -> float:
+        execution = self.executor.config.get("execution", {})
+        delta_debug = execution.get("delta_debug", {})
+        value = delta_debug.get("tolerance", 0.01)
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return 0.01
 
     # ---------- segmentation ----------
     def extract_circuit_segments(self, circuit: QuantumCircuit) -> List[Dict[str, Any]]:
@@ -81,7 +101,7 @@ class QuantumDeltaDebugger:
                     "params": getattr(instruction.operation, "params", []),
                 }
             )
-            if len(current_layer) >= self.MAX_LAYER_SIZE:
+            if len(current_layer) >= self.max_layer_size:
                 flush()
                 current_layer = []
         flush()
@@ -272,6 +292,7 @@ class QuantumDeltaDebugger:
                 "shots": self.executor.config["execution"]["shots"],
                 "tolerance": self.tolerance,
                 "max_granularity": self.max_granularity,
+                "max_layer_size": self.max_layer_size,
                 "test_mode": self.test_mode,
                 "baseline_execution_type": self.baseline_execution_type,
                 "test_execution_type": self.test_execution_type,
@@ -351,9 +372,10 @@ class QuantumDeltaDebugger:
 def run_delta_debug_on_isa(
     executor,
     isa_circuit: QuantumCircuit,
-    tolerance: float = 0.01,
+    tolerance: Optional[float] = None,
     test_mode: bool = False,
     max_granularity: int = 16,
+    max_layer_size: Optional[int] = None,
     resume_candidates: Optional[List[int]] = None,
     on_step: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> Dict[str, Any]:
@@ -361,7 +383,8 @@ def run_delta_debug_on_isa(
         executor=executor,
         tolerance=tolerance,
         test_mode=test_mode,
-        max_granularity=max_granularity
+        max_granularity=max_granularity,
+        max_layer_size=max_layer_size,
     )
     return dbg.debug_circuit(
         isa_circuit,
