@@ -20,7 +20,8 @@
       "max_granularity": 16,
       "test_mode": false,
       "baseline_execution_type": "noisy_simulator",
-      "test_execution_type": "real_device"
+      "test_execution_type": "real_device",
+      "max_layer_size": 5
     }
   },
   "problematic_segments": [
